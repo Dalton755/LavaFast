@@ -1,0 +1,13 @@
+const ACTIONS = Object.freeze({
+
+    MOVIMENTAR: 'MOVIMENTAR',
+
+    INICIAR_LAVAGEM: 'INICIAR_LAVAGEM',
+
+    FINALIZAR: 'FINALIZAR',
+
+    CANCELAR: 'CANCELAR'
+
+});
+
+export default ACTIONS;

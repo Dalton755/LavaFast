@@ -1,0 +1,15 @@
+const STATUS = Object.freeze({
+
+    SOLICITADO: 'SOLICITADO',
+
+    AGUARDANDO: 'AGUARDANDO',
+
+    EM_LAVAGEM: 'EM_LAVAGEM',
+
+    FINALIZADA: 'FINALIZADA',
+
+    CANCELADA: 'CANCELADA'
+
+});
+
+export default STATUS;
