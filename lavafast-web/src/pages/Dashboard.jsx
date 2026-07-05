@@ -4,6 +4,8 @@ import MobileBoard from "../components/dashboard/MobileBoard";
 
 import useSolicitacoes from '../hooks/useSolicitacoes';
 import useClock from "../hooks/useClock";
+import { useEffect } from "react";
+import supabase from "../lib/supabase";
 
 export default function Dashboard() {
 
@@ -18,6 +20,7 @@ export default function Dashboard() {
     } = useSolicitacoes();
 
     const now = useClock();
+    
 
     return (
 

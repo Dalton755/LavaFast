@@ -36,6 +36,8 @@ class LocalizaRepository {
 
             .single();
 
+            console.log("INSERT REALIZADO:", data);
+
         if (error) {
 
             throw error;

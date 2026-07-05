@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 import { listarSolicitacoes } from '../api/solicitacoes';
 
@@ -14,6 +14,8 @@ import {
 
 import { useLoja } from "../context/LojaContext";
 
+import useRealtimeSolicitacoes from "./useRealtimeSolicitacoes";
+
 
 
 export default function useSolicitacoes() {
@@ -24,24 +26,19 @@ export default function useSolicitacoes() {
 
     const { loja } = useLoja();
 
-    async function carregar() {
+    const carregar = useCallback(async () => {
 
         console.log("RECARREGANDO...");
+
         try {
 
-            if (!loja) {
+            if (!loja) return;
 
-                return;
+            const dados = await listarSolicitacoes(loja.id);
 
-            }
+            console.log("Loja:", loja);
 
-            const dados = await listarSolicitacoes(
-
-                loja.id
-
-            );
-
-            console.log('Dados da API:', dados);
+            console.log("Dados:", dados);
 
             setSolicitacoes(dados);
 
@@ -51,7 +48,7 @@ export default function useSolicitacoes() {
 
         }
 
-    }
+    }, [loja]);
 
     useEffect(() => {
 
@@ -128,6 +125,8 @@ export default function useSolicitacoes() {
         );
 
     }
+
+    useRealtimeSolicitacoes(carregar);
 
     return {
 

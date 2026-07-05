@@ -34,6 +34,18 @@ class SolicitacaoRepository {
 
         } = await consulta;
 
+        console.log("");
+        console.log("========== LISTAR SOLICITAÇÕES ==========");
+        console.log("Horário:", new Date().toLocaleTimeString());
+        console.log("Quantidade:", data?.length);
+        console.table(
+            data?.map(x => ({
+                placa: x.placa,
+                status: x.status
+            }))
+        );
+        console.log("=========================================");
+
         if (error) {
 
             throw error;
@@ -97,69 +109,69 @@ class SolicitacaoRepository {
 
     async existePorNumero(numeroSolicitacao) {
 
-    const {
+        const {
 
-        data,
+            data,
 
-        error
+            error
 
-    } = await supabase
+        } = await supabase
 
-        .schema("operacoes")
+            .schema("operacoes")
 
-        .from("solicitacoes_lavagem")
+            .from("solicitacoes_lavagem")
 
-        .select("id")
+            .select("id")
 
-        .eq(
+            .eq(
 
-            "numero_solicitacao",
+                "numero_solicitacao",
 
-            numeroSolicitacao
+                numeroSolicitacao
 
-        )
+            )
 
-        .maybeSingle();
+            .maybeSingle();
 
-    if (error) {
+        if (error) {
 
-        throw error;
+            throw error;
 
-    }
+        }
 
-    return !!data;
-
-}
-
-async criar(dados) {
-
-    const {
-
-        data,
-
-        error
-
-    } = await supabase
-
-        .schema("operacoes")
-
-        .from("solicitacoes_lavagem")
-
-        .insert(dados)
-
-        .select()
-
-        .single();
-
-    if (error) {
-
-        throw error;
+        return !!data;
 
     }
 
-    return data;
+    async criar(dados) {
 
-}
+        const {
+
+            data,
+
+            error
+
+        } = await supabase
+
+            .schema("operacoes")
+
+            .from("solicitacoes_lavagem")
+
+            .insert(dados)
+
+            .select()
+
+            .single();
+
+        if (error) {
+
+            throw error;
+
+        }
+
+        return data;
+
+    }
 
 }
 

@@ -4,6 +4,7 @@ import supabase from './config/supabase.js';
 import localizaRoutes from './routes/localiza.js';
 import solicitacoesRoutes from './routes/solicitacoes.js';
 import lojasRoutes from './routes/lojas.js';
+import { iniciarSchedulers } from './scheduler/index.js';
 
 const app = express();
 
@@ -62,5 +63,6 @@ app.get('/teste', async (req, res) => {
 
 app.use('/api/localiza', localizaRoutes);
 app.use('/api/lojas', lojasRoutes);
+iniciarSchedulers();
 
 export default app;

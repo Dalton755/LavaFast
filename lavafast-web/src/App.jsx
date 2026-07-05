@@ -1,7 +1,16 @@
-import Dashboard from './pages/Dashboard';
+import Dashboard from "./pages/Dashboard";
+import { LojaProvider } from "./context/LojaContext";
 
 export default function App() {
 
-    return <Dashboard />;
+    return (
+
+        <LojaProvider>
+
+            <Dashboard />
+
+        </LojaProvider>
+
+    );
 
 }
