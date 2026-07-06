@@ -5,7 +5,11 @@ import { google } from "googleapis";
 import { authenticate } from "@google-cloud/local-auth";
 
 const SCOPES = [
-    "https://www.googleapis.com/auth/gmail.readonly"
+
+    "https://www.googleapis.com/auth/gmail.modify",
+
+    "https://www.googleapis.com/auth/gmail.labels"
+
 ];
 
 const TOKEN_PATH = path.join(
@@ -20,7 +24,7 @@ const CREDENTIALS_PATH = path.join(
     "client_secret.json"
 );
 
-async function authorize() {
+export async function authorize() {
 
     if (fs.existsSync(TOKEN_PATH)) {
 
@@ -71,10 +75,7 @@ export async function listarEmails() {
 
     const auth = await authorize();
 
-
     const gmail = google.gmail({
-
-        
 
         version: "v1",
 
@@ -83,14 +84,27 @@ export async function listarEmails() {
     });
 
     const resposta = await gmail.users.messages.list({
-
         userId: "me",
+        q: "label:LOCALIZA_LAVAGEM newer_than:1d",
+        maxResults: 1
+    });
 
-        q: "label:LOCALIZA_LAVAGEM"
+    const mensagens = resposta.data.messages ?? [];
+
+    console.log("");
+    console.log("===== GMAIL =====");
+    console.log("Mensagens encontradas:", mensagens.length);
+
+    mensagens.forEach((m, i) => {
+
+        console.log(i + 1, m.id);
 
     });
 
-    return resposta.data.messages ?? [];
+    console.log("=================");
+    console.log("");
+
+    return mensagens;
 
 }
 
@@ -120,32 +134,122 @@ export async function obterEmail(id) {
 
 }
 
-export async function obterTextoEmail(id) {
+function extrairParteTexto(parte) {
 
-    const email = await obterEmail(id);
-
-    const parteTexto = email.payload.parts?.find(
-
-        parte => parte.mimeType === "text/plain"
-
-    );
-
-    if (!parteTexto) {
+    if (!parte) {
 
         return null;
 
     }
 
-    return Buffer
+    if (
 
-        .from(
+        parte.mimeType === "text/plain" &&
 
-            parteTexto.body.data,
+        parte.body?.data
 
-            "base64"
+    ) {
 
-        )
+        return {
 
-        .toString("utf8");
+            tipo: "text/plain",
+
+            conteudo: Buffer
+
+                .from(
+
+                    parte.body.data,
+
+                    "base64"
+
+                )
+
+                .toString("utf8")
+
+        };
+
+    }
+
+    if (
+
+        parte.mimeType === "text/html" &&
+
+        parte.body?.data
+
+    ) {
+
+        return {
+
+            tipo: "text/html",
+
+            conteudo: Buffer
+
+                .from(
+
+                    parte.body.data,
+
+                    "base64"
+
+                )
+
+                .toString("utf8")
+
+        };
+
+    }
+
+    if (parte.parts) {
+
+        for (const filho of parte.parts) {
+
+            const resultado = extrairParteTexto(filho);
+
+            if (resultado) {
+
+                return resultado;
+
+            }
+
+        }
+
+    }
+
+    return null;
+
+}
+
+export async function obterTextoEmail(id) {
+
+    const email = await obterEmail(id);
+
+    console.log("");
+    console.log("================================");
+    console.log("EMAIL:", id);
+    console.log("MIME:", email.payload.mimeType);
+    console.log("================================");
+
+    console.log("MIME:", email.payload.mimeType);
+
+    console.log("Parts:");
+
+    email.payload.parts?.forEach((parte, i) => {
+
+        console.log(i, parte.mimeType);
+
+    });
+
+    const parte = extrairParteTexto(email.payload);
+
+    if (!parte) {
+
+        console.log("❌ Nenhuma parte de texto encontrada.");
+
+        return null;
+
+    }
+
+    console.log(`📄 Tipo encontrado: ${parte.tipo}`);
+
+    return parte.conteudo;
 
 }

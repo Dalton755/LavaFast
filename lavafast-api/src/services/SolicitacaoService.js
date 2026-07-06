@@ -112,6 +112,7 @@ class SolicitacaoService {
     async importarDaLocaliza() {
 
         const emails = await listarEmails();
+        console.log("Emails recebidos do Gmail:", emails.length);
 
         let importados = 0;
 
@@ -120,10 +121,13 @@ class SolicitacaoService {
         let erros = 0;
 
         for (const email of emails) {
+            console.log("Processando email:", email.id);
 
             try {
 
                 const texto = await obterTextoEmail(email.id);
+
+
 
                 if (!texto) {
 
@@ -132,12 +136,17 @@ class SolicitacaoService {
                 }
 
                 const dados = parseLocaliza(texto);
+                console.log("Parser:", dados ? "OK" : "FALHOU");
+
+                console.log("SEM TEXTO:", email.id);
 
                 if (!dados) {
 
                     continue;
 
                 }
+
+                console.log("Texto encontrado.");
 
                 for (const veiculo of dados.veiculos) {
 
@@ -152,6 +161,11 @@ class SolicitacaoService {
                             )
 
                         );
+                    console.log(
+                        "Solicitação",
+                        veiculo.numeroSolicitacao,
+                        existe ? "JÁ EXISTE" : "NÃO EXISTE"
+                    );
 
                     if (existe) {
 
