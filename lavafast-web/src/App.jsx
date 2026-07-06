@@ -1,4 +1,4 @@
-import Dashboard from "./pages/Dashboard";
+import Dashboard from "./modules/dashboard/pages/Dashboard";
 import { LojaProvider } from "./context/LojaContext";
 
 export default function App() {
