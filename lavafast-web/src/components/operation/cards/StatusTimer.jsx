@@ -5,7 +5,7 @@ import {
 
 } from "lucide-react";
 
-import { formatDuration } from "../../utils/time";
+import { formatDuration } from "../../../utils/time";
 
 export default function StatusTimer({
 

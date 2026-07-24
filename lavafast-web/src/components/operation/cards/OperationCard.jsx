@@ -7,12 +7,11 @@ import {
     CircleCheck
 
 } from 'lucide-react';
+import WORKFLOW from "../../../workflows/OperationWorkflow";
 
 export default function OperationCard({
 
     solicitacao,
-
-    novo = false,
 
     now,
 
@@ -20,52 +19,31 @@ export default function OperationCard({
 
 }) {
 
+    const botao = WORKFLOW[solicitacao.status];
+
+    function handleAction() {
+
+        onAction?.(solicitacao);
+
+    }
     return (
 
         <div
-            className={`
-        bg-white
-        rounded-2xl
-        border
-        p-4
-        md:p-6
-        transition-all
-        duration-500
-        hover:shadow-xl
-        hover:-translate-y-1
-
-        ${novo
-                    ? "border-blue-500 shadow-2xl ring-4 ring-blue-200 animate-pulse"
-                    : "border-slate-200 shadow-md"
-                }
-    `}
+            className="
+                bg-white
+                rounded-2xl
+                shadow-md
+                border
+                border-slate-200
+                p-4 md:p-6
+                transition-all
+                duration-200
+                hover:shadow-xl
+                hover:-translate-y-1
+            "
         >
 
             <div className="flex items-center justify-between">
-
-                {novo && (
-
-                    <div className="flex justify-end mb-3">
-
-                        <span
-                            className="
-                px-3
-                py-1
-                rounded-full
-                bg-blue-600
-                text-white
-                text-xs
-                font-bold
-                tracking-wider
-                uppercase
-            "
-                        >
-                            Novo
-                        </span>
-
-                    </div>
-
-                )}
 
                 <div>
 
@@ -144,9 +122,11 @@ export default function OperationCard({
 
             <ActionButton
 
-                solicitacao={solicitacao}
+                texto={botao.botao}
 
-                onAction={onAction}
+                cor={botao.cor}
+
+                onClick={handleAction}
 
             />
 

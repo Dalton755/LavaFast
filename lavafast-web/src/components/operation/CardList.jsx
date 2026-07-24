@@ -1,4 +1,4 @@
-import OperationCard from "./OperationCard";
+import OperationCard from "./cards/OperationCard";
 
 export default function CardList({
 

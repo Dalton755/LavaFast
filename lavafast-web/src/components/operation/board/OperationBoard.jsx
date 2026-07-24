@@ -1,6 +1,6 @@
-import OperationCard from './OperationCard';
-import useClock from "../../hooks/useClock";
-import BoardColumns from "../../config/BoardColumns";
+import OperationCard from '../cards/OperationCard';
+import useClock from "../../../hooks/useClock";
+import BoardColumns from "../../../config/BoardColumns";
 import {
 
     CarFront,

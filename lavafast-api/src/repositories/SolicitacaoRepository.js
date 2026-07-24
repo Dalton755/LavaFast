@@ -34,6 +34,11 @@ class SolicitacaoRepository {
 
         } = await consulta;
 
+        console.log("=========================================");
+        console.log("Loja recebida:", lojaId);
+        console.log("Primeiras placas:", data?.map(x => x.placa));
+        console.log("=========================================");
+
         console.log("");
         console.log("========== LISTAR SOLICITAÇÕES ==========");
         console.log("Horário:", new Date().toLocaleTimeString());

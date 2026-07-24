@@ -1,7 +1,7 @@
 import MainLayout from "../../../layouts/MainLayout";
 
-import OperationBoard from "../../../components/dashboard/OperationBoard";
-import MobileBoard from "../../../components/dashboard/MobileBoard";
+import OperationBoard from "../../../components/operation/board/OperationBoard";
+import MobileBoard from "../../../components/operation/board/MobileBoard";
 
 import useSolicitacoes from "../../../hooks/useSolicitacoes";
 import useClock from "../../../hooks/useClock";

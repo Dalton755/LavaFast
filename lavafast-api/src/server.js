@@ -13,8 +13,8 @@ app.listen(PORT, async () => {
     console.log("===================================");
     console.log("");
 
-    await GmailLabelService.inicializar();
+   // await GmailLabelService.inicializar();
 
-    iniciarSchedulers();
+// iniciarSchedulers();
 
 });

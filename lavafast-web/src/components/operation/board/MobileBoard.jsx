@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import MobileTab from "./MobileTab";
-import CardList from "./CardList";
+import CardList from "../CardList";
 
 const TABS = [
 

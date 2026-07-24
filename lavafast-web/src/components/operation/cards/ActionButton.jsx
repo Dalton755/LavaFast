@@ -1,44 +1,33 @@
-import WORKFLOW from "../../workflows/OperationWorkflow";
-
 export default function ActionButton({
 
-    solicitacao,
+    texto,
 
-    onAction
+    cor,
+
+    onClick
 
 }) {
-
-    const botao = WORKFLOW[solicitacao.status];
 
     return (
 
         <button
 
-            onClick={() => onAction?.(solicitacao)}
+            onClick={onClick}
 
             className={`
-
                 w-full
-
                 h-12
-
                 rounded-xl
-
                 text-white
-
                 font-semibold
-
                 transition-all
-
                 duration-300
-
-                ${botao.cor}
-
+                ${cor}
             `}
 
         >
 
-            {botao.botao}
+            {texto}
 
         </button>
 

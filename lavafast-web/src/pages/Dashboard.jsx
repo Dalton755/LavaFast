@@ -1,6 +1,9 @@
 import MainLayout from '../layouts/MainLayout';
-import OperationBoard from '../components/dashboard/OperationBoard';
-import MobileBoard from "../components/dashboard/MobileBoard";
+import OperationBoard from "../components/operation/board/OperationBoard";
+import MobileBoard from "../components/operation/board/MobileBoard";
+
+import MovimentarModal from "../components/operation/modals/MovimentarModal";
+import useMovimentacao from "../components/operation/hooks/useMovimentacao";
 
 import useSolicitacoes from '../hooks/useSolicitacoes';
 import useClock from "../hooks/useClock";
@@ -20,7 +23,8 @@ export default function Dashboard() {
     } = useSolicitacoes();
 
     const now = useClock();
-    
+    const movimentacao = useMovimentacao();
+
 
     return (
 
@@ -55,6 +59,14 @@ export default function Dashboard() {
                 />
 
             </div>
+
+            <MovimentarModal
+
+                aberto={movimentacao.aberto}
+
+                fechar={movimentacao.fechar}
+
+            />
 
         </MainLayout>
 
