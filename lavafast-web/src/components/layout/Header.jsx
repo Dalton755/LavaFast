@@ -14,8 +14,7 @@ export default function Header() {
     } = useLoja();
 
     console.log("LOJAS:", lojas);
-
-console.log("LOJA ATUAL:", loja);
+    console.log("Quantidade:", lojas.length);
 
     return (
 

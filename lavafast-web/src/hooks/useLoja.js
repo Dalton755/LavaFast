@@ -22,6 +22,8 @@ export default function useLoja() {
 
         const dados = await listarLojas();
 
+        console.log("RETORNO listarLojas:", dados);
+
         console.log("Resposta da API:", dados);
 
         setLojas(dados);

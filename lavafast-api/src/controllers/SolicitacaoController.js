@@ -6,9 +6,21 @@ class SolicitacaoController {
 
         try {
 
+            const inicio = Date.now();
+
             const { loja } = req.query;
 
             const dados = await SolicitacaoService.listar(loja);
+
+            console.log("");
+            console.log("========== PERFORMANCE ==========");
+            console.log(
+                "GET /solicitacoes:",
+                Date.now() - inicio,
+                "ms"
+            );
+            console.log("================================");
+            console.log("");
 
             return res.json(dados);
 

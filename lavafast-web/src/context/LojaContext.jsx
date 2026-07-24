@@ -18,39 +18,39 @@ export function LojaProvider({ children }) {
 
     }, []);
 
-    async function carregar() {
+   async function carregar() {
 
-        const dados = await listarLojas();
+    const dados = await listarLojas();
 
-        setLojas(dados);
+    console.log("RETORNO listarLojas:", dados);
 
-        const salva = localStorage.getItem(CHAVE);
+    setLojas(dados);
 
-        if (salva) {
+    console.log("Depois do setLojas");
 
-            const encontrada = dados.find(
+    const salva = localStorage.getItem(CHAVE);
 
-                x => x.id === salva
+    if (salva) {
 
-            );
+        const encontrada = dados.find(x => x.id === salva);
 
-            if (encontrada) {
+        if (encontrada) {
 
-                setLoja(encontrada);
+            setLoja(encontrada);
 
-                return;
-
-            }
-
-        }
-
-        if (dados.length) {
-
-            setLoja(dados[0]);
+            return;
 
         }
 
     }
+
+    if (dados.length) {
+
+        setLoja(dados[0]);
+
+    }
+
+}
 
     function selecionar(id) {
 

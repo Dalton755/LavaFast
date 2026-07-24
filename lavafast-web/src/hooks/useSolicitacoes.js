@@ -28,6 +28,8 @@ export default function useSolicitacoes() {
 
     const carregar = useCallback(async () => {
 
+        console.time("CARREGAR");
+
         console.log("RECARREGANDO...");
 
         try {
@@ -36,11 +38,17 @@ export default function useSolicitacoes() {
 
             const dados = await listarSolicitacoes(loja.id);
 
+            console.timeLog("CARREGAR", "Consulta terminou");
+
             console.log("Loja:", loja);
 
             console.log("Dados:", dados);
 
             setSolicitacoes(dados);
+
+            console.timeLog("CARREGAR", "setSolicitacoes");
+
+            console.timeEnd("CARREGAR");
 
         } finally {
 

@@ -12,9 +12,20 @@ app.listen(PORT, async () => {
     console.log(`🌐 Porta: ${PORT}`);
     console.log("===================================");
     console.log("");
+    const inicioServidor = Date.now();
 
    // await GmailLabelService.inicializar();
 
 // iniciarSchedulers();
+
+console.log("");
+console.log("==================================");
+console.log(
+    "Servidor inicializado em",
+    Date.now() - inicioServidor,
+    "ms"
+);
+console.log("==================================");
+console.log("");
 
 });
