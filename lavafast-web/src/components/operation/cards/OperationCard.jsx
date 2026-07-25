@@ -13,8 +13,6 @@ export default function OperationCard({
 
     solicitacao,
 
-    now,
-
     onAction
 
 }) {
@@ -99,7 +97,6 @@ export default function OperationCard({
 
                 }
 
-                now={now}
 
             />
 

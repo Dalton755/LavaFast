@@ -9,7 +9,6 @@ import MovimentarModal from "../../../components/operation/modals/MovimentarModa
 import useMovimentacao from "../../../components/operation/hooks/useMovimentacao";
 
 import useSolicitacoes from "../../../hooks/useSolicitacoes";
-import useClock from "../../../hooks/useClock";
 
 export default function Dashboard() {
 
@@ -23,7 +22,6 @@ export default function Dashboard() {
 
     } = useSolicitacoes();
 
-    const now = useClock();
 
     const movimentacao = useMovimentacao();
 
@@ -79,7 +77,6 @@ export default function Dashboard() {
 
                     solicitacoes={solicitacoesFiltradas}
 
-                    now={now}
 
                     onAction={executarAcao}
 
@@ -93,7 +90,6 @@ export default function Dashboard() {
 
                     solicitacoes={solicitacoesFiltradas}
 
-                    now={now}
 
                     onAction={executarAcao}
 

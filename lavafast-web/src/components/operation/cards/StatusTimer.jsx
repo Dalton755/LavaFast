@@ -6,16 +6,19 @@ import {
 } from "lucide-react";
 
 import { formatDuration } from "../../../utils/time";
+import useClock from "../../../hooks/useClock";
 
 export default function StatusTimer({
 
     status,
 
-    inicio,
+    inicio
 
-    now
+
 
 }) {
+
+    const now = useClock();
 
     if (!inicio) return null;
 
