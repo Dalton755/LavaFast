@@ -72,7 +72,7 @@ export default function StatusTimer({
 
             <Icon size={16} />
 
-            {tempo}
+            {tempo} - {Math.random()}
 
         </div>
 
