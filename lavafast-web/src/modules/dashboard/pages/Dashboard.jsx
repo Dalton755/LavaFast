@@ -47,6 +47,8 @@ export default function Dashboard() {
 
     });
 
+    console.count("Dashboard");
+
     return (
 
         <MainLayout>

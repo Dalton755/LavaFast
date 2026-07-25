@@ -24,6 +24,8 @@ export default function OperationCard({
         onAction?.(solicitacao);
 
     }
+    console.count("OperationCard");
+
     return (
 
         <div

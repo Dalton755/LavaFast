@@ -51,6 +51,8 @@ export default function MobileBoard({
 
     );
 
+    console.count("MobileBoard");
+
     return (
 
         <div className="flex flex-col gap-4">

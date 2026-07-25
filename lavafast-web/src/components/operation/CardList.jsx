@@ -10,6 +10,8 @@ export default function CardList({
 
 }) {
 
+    console.count("CardList");
+
     return (
 
         <div className="flex flex-col gap-4">
