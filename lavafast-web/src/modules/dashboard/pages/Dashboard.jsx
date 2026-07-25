@@ -47,8 +47,6 @@ export default function Dashboard() {
 
     });
 
-    console.count("Dashboard");
-
     return (
 
         <MainLayout>
@@ -79,6 +77,7 @@ export default function Dashboard() {
 
                     solicitacoes={solicitacoesFiltradas}
 
+                    now={now}
 
                     onAction={executarAcao}
 
@@ -92,6 +91,7 @@ export default function Dashboard() {
 
                     solicitacoes={solicitacoesFiltradas}
 
+                    now={now}
 
                     onAction={executarAcao}
 
