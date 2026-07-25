@@ -14,6 +14,11 @@ export default function StatusTimer({
 
     useEffect(() => {
 
+        console.log(
+            "StatusTimer",
+            now.toLocaleTimeString()
+        );
+
         if (!inicio) return;
 
         function atualizar() {
