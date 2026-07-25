@@ -1,12 +1,6 @@
-import {
-
-    Clock3,
-    Droplets
-
-} from "lucide-react";
-
+import { useEffect, useState } from "react";
+import { Clock3, Droplets } from "lucide-react";
 import { formatDuration } from "../../../utils/time";
-import useClock from "../../../hooks/useClock";
 
 export default function StatusTimer({
 
@@ -14,21 +8,45 @@ export default function StatusTimer({
 
     inicio
 
-
-
 }) {
 
-    const now = useClock();
+    const [tempo, setTempo] = useState("--:--:--");
+
+    useEffect(() => {
+
+        if (!inicio) return;
+
+        function atualizar() {
+
+            setTempo(
+
+                formatDuration(
+
+                    inicio,
+
+                    new Date()
+
+                )
+
+            );
+
+        }
+
+        atualizar();
+
+        const interval = setInterval(
+
+            atualizar,
+
+            1000
+
+        );
+
+        return () => clearInterval(interval);
+
+    }, [inicio]);
 
     if (!inicio) return null;
-
-    const tempo = formatDuration(
-
-        inicio,
-
-        now
-
-    );
 
     const Icon =
 
