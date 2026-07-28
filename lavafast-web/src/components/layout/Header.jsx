@@ -102,19 +102,19 @@ export default function Header() {
                         onClick={() => setAbrirFiltro(!abrirFiltro)}
 
                         className="
-            flex
-            items-center
-            gap-3
-            px-5
-            py-3
-            rounded-2xl
-            bg-slate-50
-            border
-            border-slate-200
-            hover:border-amber-400
-            transition-all
-            duration-200
-        "
+                            flex
+                            items-center
+                            gap-3
+                            px-5
+                            py-3
+                            rounded-2xl
+                            bg-slate-50
+                            border
+                            border-slate-200
+                            hover:border-amber-400
+                            transition-all
+                            duration-200
+                        "
 
                     >
 
@@ -141,16 +141,18 @@ export default function Header() {
                             <div
 
                                 className="
-                    absolute
-                    right-0
-                    mt-2
-                    w-72
-                    z-50
-                "
+                                    absolute
+                                    right-0
+                                    mt-2
+                                    w-72
+                                    z-50
+                                "
 
                             >
 
-                                <FiltroLojas />
+                                <FiltroLojas
+                                    onChange={() => setAbrirFiltro(false)}
+                                />
 
                             </div>
 

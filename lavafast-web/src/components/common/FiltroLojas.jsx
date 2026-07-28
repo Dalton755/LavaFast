@@ -1,6 +1,6 @@
 import { useLoja } from "../../context/LojaContext";
 
-export default function FiltroLojas() {
+export default function FiltroLojas({ onChange }) {
 
     const {
 
@@ -36,7 +36,8 @@ export default function FiltroLojas() {
 
         }
 
-        selecionarLojas(novaLista);
+        selecionarLojas(novaLista );
+        onChange?.();
 
     }
 
