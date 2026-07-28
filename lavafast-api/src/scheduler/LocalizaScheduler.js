@@ -4,21 +4,14 @@ class LocalizaScheduler {
 
     iniciar() {
 
-        console.log("");
-
-        console.log("====================================");
-        console.log("Scheduler Localiza iniciado");
-        console.log("====================================");
 
         setInterval(async () => {
 
             try {
 
-                console.log("[Scheduler] Verificando novos e-mails...");
 
                 const resultado = await SolicitacaoService.importarDaLocaliza();
 
-                console.log("[Scheduler]", resultado);
 
             }
 

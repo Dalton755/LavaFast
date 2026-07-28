@@ -11,7 +11,6 @@ class GmailLabelService {
         const auth = await authorize();
         const token = await auth.getAccessToken();
 
-        console.log("TOKEN:", token.token ? "OK" : "NULO");
 
         const gmail = google.gmail({
 
@@ -71,7 +70,6 @@ class GmailLabelService {
 
         });
 
-        console.log(`✅ Label criada: ${nome}`);
 
         return data;
 
@@ -87,7 +85,6 @@ class GmailLabelService {
 
         }
 
-        console.log(`📁 Criando label: ${nome}`);
 
         label = await this.criar(nome);
 
@@ -97,10 +94,7 @@ class GmailLabelService {
 
     async inicializar() {
 
-        console.log("");
-        console.log("====================================");
-        console.log("Inicializando Labels do LavaFast");
-        console.log("====================================");
+
 
         await this.garantir(
 
@@ -114,8 +108,7 @@ class GmailLabelService {
 
         );
 
-        console.log("✅ Labels prontas.");
-        console.log("");
+
 
     }
 

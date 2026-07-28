@@ -23,13 +23,26 @@ import WorkflowService from './WorkflowService.js';
 
 class SolicitacaoService {
 
-    async listar(lojaId) {
+    async listar(lojas) {
 
-        return await SolicitacaoRepository.listar(lojaId);
+        const lojasSelecionadas =
+
+            lojas
+
+                ? lojas.split(",")
+
+                : [];
+
+        return await SolicitacaoRepository.listar(
+
+            lojasSelecionadas
+
+        );
 
     }
 
-    async movimentar(id) {
+    async movimentar(id, funcionarioId) {
+
 
         const solicitacao = await SolicitacaoRepository.buscarPorId(id);
 
@@ -44,15 +57,28 @@ class SolicitacaoService {
 
         }
 
-        return await SolicitacaoRepository.atualizar(id, {
+        const resultado = await SolicitacaoRepository.atualizar(
 
-            status: STATUS.AGUARDANDO
+            id,
 
-        });
+            {
+
+                status: STATUS.AGUARDANDO,
+
+                funcionario_movimentacao_id: funcionarioId,
+
+                movimentada_em: new Date()
+
+            }
+
+        );
+
+
+        return resultado;
 
     }
 
-    async iniciar(id) {
+    async iniciar(id, funcionarioId) {
 
         const solicitacao = await SolicitacaoRepository.buscarPorId(id);
 
@@ -71,7 +97,9 @@ class SolicitacaoService {
 
             status: STATUS.EM_LAVAGEM,
 
-            iniciada_em: new Date().toISOString()
+            iniciada_em: new Date().toISOString(),
+
+            funcionario_id: funcionarioId,
 
         });
 
@@ -112,7 +140,6 @@ class SolicitacaoService {
     async importarDaLocaliza() {
 
         const emails = await listarEmails();
-        console.log("Emails recebidos do Gmail:", emails.length);
 
         let importados = 0;
 
@@ -121,7 +148,6 @@ class SolicitacaoService {
         let erros = 0;
 
         for (const email of emails) {
-            console.log("Processando email:", email.id);
 
             try {
 
@@ -136,9 +162,7 @@ class SolicitacaoService {
                 }
 
                 const dados = parseLocaliza(texto);
-                console.log("Parser:", dados ? "OK" : "FALHOU");
 
-                console.log("SEM TEXTO:", email.id);
 
                 if (!dados) {
 
@@ -146,7 +170,6 @@ class SolicitacaoService {
 
                 }
 
-                console.log("Texto encontrado.");
 
                 for (const veiculo of dados.veiculos) {
 
@@ -161,11 +184,7 @@ class SolicitacaoService {
                             )
 
                         );
-                    console.log(
-                        "Solicitação",
-                        veiculo.numeroSolicitacao,
-                        existe ? "JÁ EXISTE" : "NÃO EXISTE"
-                    );
+
 
                     if (existe) {
 

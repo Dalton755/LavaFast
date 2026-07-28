@@ -8,19 +8,11 @@ class SolicitacaoController {
 
             const inicio = Date.now();
 
-            const { loja } = req.query;
+            const { lojas } = req.query;
 
-            const dados = await SolicitacaoService.listar(loja);
+            const dados = await SolicitacaoService.listar(lojas);
 
-            console.log("");
-            console.log("========== PERFORMANCE ==========");
-            console.log(
-                "GET /solicitacoes:",
-                Date.now() - inicio,
-                "ms"
-            );
-            console.log("================================");
-            console.log("");
+
 
             return res.json(dados);
 
@@ -40,11 +32,21 @@ class SolicitacaoController {
 
     async movimentar(req, res) {
 
+        const { funcionario } = req.body;
+
         try {
 
             const { id } = req.params;
 
-            const resultado = await SolicitacaoService.movimentar(id);
+
+            const resultado = await SolicitacaoService.movimentar(
+
+                id,
+
+                funcionario
+
+            );
+
 
             return res.json({
 
@@ -76,7 +78,15 @@ class SolicitacaoController {
 
             const { id } = req.params;
 
-            const solicitacao = await SolicitacaoService.iniciar(id);
+            const { funcionario } = req.body;
+
+            const solicitacao = await SolicitacaoService.iniciar(
+
+                id,
+
+                funcionario
+
+            );
 
             return res.json({
 

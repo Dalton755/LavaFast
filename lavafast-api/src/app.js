@@ -3,6 +3,7 @@ import cors from 'cors';
 import supabase from './config/supabase.js';
 import localizaRoutes from './routes/localiza.js';
 import solicitacoesRoutes from './routes/solicitacoes.js';
+import funcionariosRoutes from "./routes/funcionarios.js";
 import lojasRoutes from './routes/lojas.js';
 import { iniciarSchedulers } from './scheduler/index.js';
 
@@ -10,13 +11,8 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use(
-
-    '/api/solicitacoes',
-
-    solicitacoesRoutes
-
-);
+app.use( '/api/solicitacoes', solicitacoesRoutes);
+app.use("/api/funcionarios", funcionariosRoutes);
 
 app.get('/', (req, res) => {
 

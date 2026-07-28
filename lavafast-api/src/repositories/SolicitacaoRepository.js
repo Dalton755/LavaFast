@@ -2,7 +2,7 @@ import supabase from '../config/supabase.js';
 
 class SolicitacaoRepository {
 
-    async listar(lojaId) {
+    async listar(lojas) {
 
         let consulta = supabase
             .schema('operacoes')
@@ -14,42 +14,21 @@ class SolicitacaoRepository {
 
             });
 
-        if (lojaId) {
+        if (lojas.length > 0) {
 
-            consulta = consulta.eq(
+            consulta = consulta.in(
 
-                'loja_id',
+                "loja_id",
 
-                lojaId
+                lojas
 
             );
 
         }
 
-        const {
+        const { data, error } = await consulta;
 
-            data,
 
-            error
-
-        } = await consulta;
-
-        console.log("=========================================");
-        console.log("Loja recebida:", lojaId);
-        console.log("Primeiras placas:", data?.map(x => x.placa));
-        console.log("=========================================");
-
-        console.log("");
-        console.log("========== LISTAR SOLICITAÇÕES ==========");
-        console.log("Horário:", new Date().toLocaleTimeString());
-        console.log("Quantidade:", data?.length);
-        console.table(
-            data?.map(x => ({
-                placa: x.placa,
-                status: x.status
-            }))
-        );
-        console.log("=========================================");
 
         if (error) {
 

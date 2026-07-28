@@ -91,18 +91,13 @@ export async function listarEmails() {
 
     const mensagens = resposta.data.messages ?? [];
 
-    console.log("");
-    console.log("===== GMAIL =====");
-    console.log("Mensagens encontradas:", mensagens.length);
+
 
     mensagens.forEach((m, i) => {
 
-        console.log(i + 1, m.id);
 
     });
 
-    console.log("=================");
-    console.log("");
 
     return mensagens;
 
@@ -222,19 +217,12 @@ export async function obterTextoEmail(id) {
 
     const email = await obterEmail(id);
 
-    console.log("");
-    console.log("================================");
-    console.log("EMAIL:", id);
-    console.log("MIME:", email.payload.mimeType);
-    console.log("================================");
 
-    console.log("MIME:", email.payload.mimeType);
 
-    console.log("Parts:");
+
 
     email.payload.parts?.forEach((parte, i) => {
 
-        console.log(i, parte.mimeType);
 
     });
 
@@ -242,13 +230,11 @@ export async function obterTextoEmail(id) {
 
     if (!parte) {
 
-        console.log("❌ Nenhuma parte de texto encontrada.");
 
         return null;
 
     }
 
-    console.log(`📄 Tipo encontrado: ${parte.tipo}`);
 
     return parte.conteudo;
 

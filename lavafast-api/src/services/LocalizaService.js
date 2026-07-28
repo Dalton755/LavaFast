@@ -4,13 +4,7 @@ class LocalizaService {
 
     async importar(solicitacao) {
 
-        console.log('');
-        console.log('======================================');
-        console.log('NOVA SOLICITAÇÃO RECEBIDA');
-        console.log('======================================');
-        console.log(solicitacao);
-        console.log('======================================');
-        console.log('');
+
 
         const { data: loja, error: erroLoja } = await supabase
             .schema('operacoes')
@@ -27,8 +21,6 @@ class LocalizaService {
 
         }
 
-        console.log('Loja encontrada:');
-        console.log(loja);
 
         const { data: tipoLavagem, error: erroTipo } = await supabase
             .schema('operacoes')
@@ -47,8 +39,6 @@ class LocalizaService {
 
         }
 
-        console.log('Tipo de lavagem:');
-        console.log(tipoLavagem);
 
         // Verifica se a solicitação já existe
         const { data: solicitacaoExistente, error: erroConsulta } = await supabase

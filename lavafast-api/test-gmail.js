@@ -14,7 +14,6 @@ import {
 
 const emails = await listarEmails();
 
-console.log("Emails encontrados:", emails.length);
 
 const email = await obterEmail(emails[0].id);
 
@@ -34,4 +33,3 @@ const corpo = Buffer.from(
 
 const resultado = parseLocaliza(corpo);
 
-console.log(resultado);
