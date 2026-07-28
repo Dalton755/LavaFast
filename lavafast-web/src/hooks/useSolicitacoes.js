@@ -126,7 +126,7 @@ export default function useSolicitacoes() {
 
     }
 
-   // useRealtimeSolicitacoes(carregar);
+    useRealtimeSolicitacoes(carregar);
 
     return {
 
