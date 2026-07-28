@@ -141,11 +141,11 @@ export default function Header() {
                             <div
 
                                 className="
-                                    absolute
-                                    right-0
-                                    mt-2
-                                    w-72
-                                    z-50
+                                    fixed
+                                    top-20
+                                    left-4
+                                    right-4
+                                    z-[9999]
                                 "
 
                             >
