@@ -30,13 +30,7 @@ export default function useMovimentacao() {
 
     async function confirmar() {
 
-        console.log({
 
-            solicitacao,
-
-            funcionario
-
-        });
 
     }
 

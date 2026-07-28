@@ -24,31 +24,23 @@ export default function useSolicitacoes() {
 
     const [loading, setLoading] = useState(true);
 
-    const { loja } = useLoja();
+    const { lojasSelecionadas } = useLoja();
 
     const carregar = useCallback(async () => {
 
-        console.time("CARREGAR");
-
-        console.log("RECARREGANDO...");
-
         try {
 
-            if (!loja) return;
+            if (lojasSelecionadas.length === 0) return;
 
-            const dados = await listarSolicitacoes(loja.id);
+            const dados = await listarSolicitacoes(
 
-            console.timeLog("CARREGAR", "Consulta terminou");
+                lojasSelecionadas
 
-            console.log("Loja:", loja);
-
-            console.log("Dados:", dados);
+            );
 
             setSolicitacoes(dados);
 
-            console.timeLog("CARREGAR", "setSolicitacoes");
 
-            console.timeEnd("CARREGAR");
 
         } finally {
 
@@ -56,17 +48,17 @@ export default function useSolicitacoes() {
 
         }
 
-    }, [loja]);
+    }, [lojasSelecionadas]);
 
     useEffect(() => {
 
-        if (loja) {
+        if (lojasSelecionadas.length > 0) {
 
             carregar();
 
         }
 
-    }, [loja]);
+    }, [lojasSelecionadas]);
 
     async function executarAcao(solicitacao) {
 
@@ -134,7 +126,7 @@ export default function useSolicitacoes() {
 
     }
 
-    useRealtimeSolicitacoes(carregar);
+   // useRealtimeSolicitacoes(carregar);
 
     return {
 

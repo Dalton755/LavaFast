@@ -39,7 +39,8 @@ export default function MobileBoard({
 
     solicitacoes,
     now,
-    onAction
+    onAction,
+    onOpen
 
 }) {
 
@@ -51,7 +52,6 @@ export default function MobileBoard({
 
     );
 
-    console.count("MobileBoard");
 
     return (
 
@@ -90,6 +90,8 @@ export default function MobileBoard({
                 now={now}
 
                 onAction={onAction}
+
+                onOpen={onOpen}
 
             />
 

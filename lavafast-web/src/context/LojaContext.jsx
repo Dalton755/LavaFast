@@ -5,6 +5,7 @@ import { listarLojas } from "../api/lojas";
 const LojaContext = createContext();
 
 const CHAVE = "lavafast.loja";
+const CHAVE_MULTIPLA = "lavafast.lojas";
 
 export function LojaProvider({ children }) {
 
@@ -12,45 +13,75 @@ export function LojaProvider({ children }) {
 
     const [loja, setLoja] = useState(null);
 
+    const [
+
+        lojasSelecionadas,
+
+        setLojasSelecionadas
+
+    ] = useState([]);
+
     useEffect(() => {
 
         carregar();
 
     }, []);
 
-   async function carregar() {
+    async function carregar() {
 
-    const dados = await listarLojas();
+        const dados = await listarLojas();
 
-    console.log("RETORNO listarLojas:", dados);
 
-    setLojas(dados);
+        setLojas(dados);
 
-    console.log("Depois do setLojas");
 
-    const salva = localStorage.getItem(CHAVE);
+        const salva = localStorage.getItem(CHAVE);
 
-    if (salva) {
+        if (salva) {
 
-        const encontrada = dados.find(x => x.id === salva);
+            const encontrada = dados.find(x => x.id === salva);
 
-        if (encontrada) {
+            if (encontrada) {
 
-            setLoja(encontrada);
+                setLoja(encontrada);
 
-            return;
+            }
+
+        }
+
+        if (dados.length) {
+
+            setLoja(dados[0]);
+
+        }
+
+        const lojasSalvas = localStorage.getItem(
+
+            CHAVE_MULTIPLA
+
+        );
+
+        if (lojasSalvas) {
+
+            setLojasSelecionadas(
+
+                JSON.parse(lojasSalvas)
+
+            );
+
+        }
+
+        else if (dados.length) {
+
+            setLojasSelecionadas(
+
+                [dados[0].id]
+
+            );
 
         }
 
     }
-
-    if (dados.length) {
-
-        setLoja(dados[0]);
-
-    }
-
-}
 
     function selecionar(id) {
 
@@ -66,6 +97,20 @@ export function LojaProvider({ children }) {
 
     }
 
+    function selecionarLojas(ids) {
+
+        setLojasSelecionadas(ids);
+
+        localStorage.setItem(
+
+            CHAVE_MULTIPLA,
+
+            JSON.stringify(ids)
+
+        );
+
+    }
+
     return (
 
         <LojaContext.Provider
@@ -76,7 +121,11 @@ export function LojaProvider({ children }) {
 
                 loja,
 
-                selecionar
+                lojasSelecionadas,
+
+                selecionar,
+
+                selecionarLojas
 
             }}
 

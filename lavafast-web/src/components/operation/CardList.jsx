@@ -6,11 +6,12 @@ export default function CardList({
 
     now,
 
-    onAction
+    onAction,
+
+    onOpen
 
 }) {
 
-    console.count("CardList");
 
     return (
 
@@ -29,6 +30,8 @@ export default function CardList({
                         now={now}
 
                         onAction={onAction}
+
+                        onOpen={onOpen}
 
                     />
 

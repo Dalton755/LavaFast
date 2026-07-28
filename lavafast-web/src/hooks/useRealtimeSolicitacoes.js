@@ -6,7 +6,6 @@ export default function useRealtimeSolicitacoes(recarregar) {
 
     useEffect(() => {
 
-        console.log("Conectando ao Realtime...");
 
         const channel = supabase
 
@@ -28,15 +27,9 @@ export default function useRealtimeSolicitacoes(recarregar) {
 
                 (payload) => {
 
-                    console.log("================================");
-                    console.log("EVENTO RECEBIDO");
-                    console.log("Tipo:", payload.eventType);
-                    console.log(payload);
-                    console.log("================================");
 
                     if (payload.eventType === "INSERT") {
 
-                        console.log("CHEGOU INSERT");
 
                         NotificationService.novaSolicitacao(
 
@@ -53,7 +46,6 @@ export default function useRealtimeSolicitacoes(recarregar) {
 
             .subscribe((status) => {
 
-                console.log("STATUS:", status);
 
             });
 

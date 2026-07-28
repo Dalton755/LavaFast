@@ -17,12 +17,13 @@ import OperationColumn from './OperationColumn';
 
 export default function OperationBoard({
 
-
     solicitacoes = [],
 
     loading,
 
-    onAction
+    onAction,
+
+    onOpen
 
 }) {
 
@@ -78,7 +79,6 @@ export default function OperationBoard({
 
     }
 
-    console.log("Solicitações:", solicitacoes);
 
 
 
@@ -129,6 +129,8 @@ export default function OperationBoard({
                                     key={solicitacao.id}
 
                                     solicitacao={solicitacao}
+
+                                    onOpen={onOpen}
 
                                     now={now}
 

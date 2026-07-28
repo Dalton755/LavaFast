@@ -18,19 +18,15 @@ export default function useLoja() {
 
     async function carregar() {
 
-        console.log("Carregando lojas...");
 
         const dados = await listarLojas();
 
-        console.log("RETORNO listarLojas:", dados);
 
-        console.log("Resposta da API:", dados);
 
         setLojas(dados);
 
         const salva = localStorage.getItem(CHAVE);
 
-        console.log("LocalStorage:", salva);
 
         if (salva) {
 
@@ -40,7 +36,6 @@ export default function useLoja() {
 
             );
 
-            console.log("Loja encontrada:", encontrada);
 
             if (encontrada) {
 
@@ -54,7 +49,6 @@ export default function useLoja() {
 
         if (dados.length) {
 
-            console.log("Selecionando primeira loja:", dados[0]);
 
             setLoja(dados[0]);
 

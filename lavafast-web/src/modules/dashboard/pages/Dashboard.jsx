@@ -1,38 +1,38 @@
 import { useState } from "react";
-
 import MainLayout from "../../../layouts/MainLayout";
-
 import OperationBoard from "../../../components/operation/board/OperationBoard";
 import MobileBoard from "../../../components/operation/board/MobileBoard";
-
 import MovimentarModal from "../../../components/operation/modals/MovimentarModal";
 import useMovimentacao from "../../../components/operation/hooks/useMovimentacao";
-
+import SolicitacaoModal from "../../../components/operation/modals/SolicitacaoModal";
 import useSolicitacoes from "../../../hooks/useSolicitacoes";
 
 export default function Dashboard() {
 
     const {
-
         solicitacoes,
-
         loading,
-
         executarAcao
-
     } = useSolicitacoes();
 
-
     const movimentacao = useMovimentacao();
+    const {
 
+        aberto,
+
+        abrir,
+
+        fechar,
+
+        solicitacao
+
+    } = movimentacao;
     const [pesquisa, setPesquisa] = useState("");
-
+    const [solicitacaoSelecionada, setSolicitacaoSelecionada] = useState(null);
     const solicitacoesFiltradas = solicitacoes.filter(item => {
-
         if (!pesquisa.trim()) return true;
 
         const texto = pesquisa.toLowerCase();
-
         return (
 
             item.placa?.toLowerCase().includes(texto) ||
@@ -47,7 +47,6 @@ export default function Dashboard() {
 
     });
 
-    console.count("Dashboard");
 
     return (
 
@@ -74,13 +73,10 @@ export default function Dashboard() {
             <div className="hidden lg:block">
 
                 <OperationBoard
-
                     loading={loading}
-
                     solicitacoes={solicitacoesFiltradas}
-
-
-                    onAction={executarAcao}
+                    onAction={abrir}
+                    onOpen={setSolicitacaoSelecionada}
 
                 />
 
@@ -89,22 +85,27 @@ export default function Dashboard() {
             <div className="block lg:hidden">
 
                 <MobileBoard
-
                     solicitacoes={solicitacoesFiltradas}
-
-
-                    onAction={executarAcao}
-
+                    onAction={abrir}
+                    onOpen={setSolicitacaoSelecionada}
                 />
 
             </div>
 
             <MovimentarModal
 
-                aberto={movimentacao.aberto}
+                aberto={aberto}
 
-                fechar={movimentacao.fechar}
+                fechar={fechar}
 
+                solicitacao={solicitacao}
+
+            />
+
+            <SolicitacaoModal
+                aberto={!!solicitacaoSelecionada}
+                solicitacao={solicitacaoSelecionada}
+                fechar={() => setSolicitacaoSelecionada(null)}
             />
 
         </MainLayout>

@@ -1,7 +1,12 @@
-import { CarFront, Building2, User } from 'lucide-react';
+import { Building2, User } from 'lucide-react';
+import BRAND from "../../config/branding";
 import { useLoja } from "../../context/LojaContext";
+import { useState } from "react";
+import FiltroLojas from "../common/FiltroLojas";
 
 export default function Header() {
+
+    const [abrirFiltro, setAbrirFiltro] = useState(false);
 
     const {
 
@@ -13,20 +18,62 @@ export default function Header() {
 
     } = useLoja();
 
-    console.log("LOJAS:", lojas);
-    console.log("Quantidade:", lojas.length);
 
     return (
 
-        <header className="h-16 bg-white border-b border-slate-200 shadow-sm">
+        <header
+            className="
+            h-20
+            bg-white/90
+            backdrop-blur-md
+            border-b
+            border-slate-200
+            shadow-sm
+            sticky
+            top-0
+            z-50
+            "
+        >
 
-            <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between">
+            <div
+                className="
+                max-w-7xl
+                mx-auto
+                h-full
+                px-8
+                flex
+                items-center
+                justify-between
+                "
+            >
 
                 <div className="flex items-center gap-3">
 
-                    <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+                    <div
+                        className="
+                        w-12
+                        h-12
+                        rounded-2xl
+                        bg-white
+                        shadow-md
+                        border
+                        border-slate-200
+                        flex
+                        items-center
+                        justify-center
+                        overflow-hidden
+                        "
+                    >
 
-                        <CarFront className="text-white" size={22} />
+                        <img
+
+                            src={BRAND.logo}
+
+                            alt={BRAND.nome}
+
+                            className="w-10 h-10 object-contain"
+
+                        />
 
                     </div>
 
@@ -34,13 +81,13 @@ export default function Header() {
 
                         <h1 className="text-xl font-bold text-slate-800">
 
-                            LavaFast ERP
+                            {BRAND.nome}
 
                         </h1>
 
                         <p className="text-xs text-slate-500">
 
-                            Gestão Operacional
+                            {BRAND.subtitulo}
 
                         </p>
 
@@ -48,53 +95,87 @@ export default function Header() {
 
                 </div>
 
-                <div className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-slate-50">
+                <div className="relative">
 
-                    <Building2
+                    <button
 
-                        size={18}
+                        onClick={() => setAbrirFiltro(!abrirFiltro)}
 
-                        className="text-slate-500"
-
-                    />
-
-                    <select
-
-                        value={loja?.id ?? ""}
-
-                        onChange={(e) => selecionar(e.target.value)}
-
-                        className="bg-transparent text-sm font-medium outline-none"
+                        className="
+            flex
+            items-center
+            gap-3
+            px-5
+            py-3
+            rounded-2xl
+            bg-slate-50
+            border
+            border-slate-200
+            hover:border-amber-400
+            transition-all
+            duration-200
+        "
 
                     >
 
-                        {
+                        <Building2
 
-                            lojas.map(loja => (
+                            size={18}
 
-                                <option
+                            className="text-slate-500"
 
-                                    key={loja.id}
+                        />
 
-                                    value={loja.id}
+                        <span className="text-sm font-medium">
 
-                                >
+                            Lojas
 
-                                    {loja.nome}
+                        </span>
 
-                                </option>
+                    </button>
 
-                            ))
+                    {
 
-                        }
+                        abrirFiltro && (
 
-                    </select>
+                            <div
+
+                                className="
+                    absolute
+                    right-0
+                    mt-2
+                    w-72
+                    z-50
+                "
+
+                            >
+
+                                <FiltroLojas />
+
+                            </div>
+
+                        )
+
+                    }
 
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
 
-                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                    <div
+                        className="
+                        w-11
+                        h-11
+                        rounded-full
+                        bg-gradient-to-br
+                        from-slate-100
+                        to-slate-200
+                        flex
+                        items-center
+                        justify-center
+                        shadow-sm
+                        "
+                    >
 
                         <User size={18} />
 

@@ -1,12 +1,12 @@
 import api from './axios';
 
-export async function listarSolicitacoes(lojaId) {
+export async function listarSolicitacoes(lojas) {
 
     const { data } = await api.get('/solicitacoes', {
 
         params: {
 
-            loja: lojaId
+            lojas: lojas.join(",")
 
         }
 
@@ -16,15 +16,23 @@ export async function listarSolicitacoes(lojaId) {
 
 }
 
-export async function movimentarSolicitacao(id) {
+export async function movimentarSolicitacao(
 
-    const { data } = await api.put(
+    solicitacaoId,
 
-        `/solicitacoes/${id}/movimentar`
+    dados
+
+) {
+
+    const response = await api.put(
+
+        `/solicitacoes/${solicitacaoId}/movimentar`,
+
+        dados
 
     );
 
-    return data;
+    return response.data;
 
 }
 
@@ -51,3 +59,44 @@ export async function finalizarSolicitacao(id) {
     return data;
 
 }
+
+export async function iniciarLavagem(
+
+    solicitacaoId,
+
+    dados
+
+) {
+
+    const response = await api.put(
+
+        `/solicitacoes/${solicitacaoId}/iniciar`,
+
+        dados
+
+    );
+
+    return response.data;
+
+}
+
+export async function finalizarLavagem(
+
+    solicitacaoId,
+
+    dados
+
+) {
+
+    const response = await api.put(
+
+        `/solicitacoes/${solicitacaoId}/finalizar`,
+
+        dados
+
+    );
+
+    return response.data;
+
+}
+

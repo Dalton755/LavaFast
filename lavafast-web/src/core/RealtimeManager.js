@@ -5,7 +5,6 @@ class RealtimeManager {
 
     iniciar() {
 
-        console.log("Realtime iniciado.");
 
         supabase
 

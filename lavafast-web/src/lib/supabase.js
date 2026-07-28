@@ -10,4 +10,3 @@ const supabase = createClient(
 
 export default supabase;
 
-console.log(supabase);
