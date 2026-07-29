@@ -31,19 +31,23 @@ export default function SolicitacaoModal({
                     rounded-3xl
                     shadow-2xl
                     w-full
-                    max-w-6xl
-                    mx-6
-                    p-8
+                    max-w-5xl
+                    mx-3
+                    md:mx-6
+                    max-h-[92vh]
+                    overflow-y-auto
+                    p-5
+                    md:p-8
                 "
             >
 
                 {/* Cabeçalho */}
 
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-5">
 
                     <div>
 
-                        <h2 className="text-5xl font-black tracking-[0.12em]">
+                        <h2 className="text-4xl md:text-5xl font-black tracking-[0.08em]">
 
                             {solicitacao.placa}
 
@@ -57,7 +61,7 @@ export default function SolicitacaoModal({
 
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between md:justify-end gap-3">
 
                         <span
                             className={`
@@ -66,10 +70,9 @@ export default function SolicitacaoModal({
                                 rounded-full
                                 text-sm
                                 font-semibold
-                                ${
-                                    solicitacao.status === "AGUARDANDO"
-                                        ? "bg-amber-100 text-amber-700"
-                                        : solicitacao.status === "EM_LAVAGEM"
+                                ${solicitacao.status === "AGUARDANDO"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : solicitacao.status === "EM_LAVAGEM"
                                         ? "bg-blue-100 text-blue-700"
                                         : "bg-green-100 text-green-700"
                                 }
@@ -85,16 +88,17 @@ export default function SolicitacaoModal({
                             onClick={fechar}
 
                             className="
-                                px-5
-                                py-2
-                                rounded-xl
+                                w-10
+                                h-10
+                                rounded-full
                                 bg-slate-100
                                 hover:bg-slate-200
-                            "
+                                text-xl
+                                "
 
                         >
 
-                            Fechar
+                            ✕
 
                         </button>
 
@@ -106,11 +110,11 @@ export default function SolicitacaoModal({
 
                 {/* Conteúdo */}
 
-                <div className="grid grid-cols-5 gap-10">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
                     {/* Coluna 1 */}
 
-                    <div className="space-y-6">
+                    <div className="space-y-5">
 
                         <div>
 
@@ -148,7 +152,7 @@ export default function SolicitacaoModal({
 
                     {/* Coluna 2 */}
 
-                    <div className="space-y-6">
+                    <div className="space-y-5">
 
                         <div>
 
@@ -186,14 +190,14 @@ export default function SolicitacaoModal({
 
                     {/* Coluna 3 */}
 
-                    <div className="space-y-6">
+                    <div className="space-y-5">
 
                         <div
                             className="
                                 rounded-2xl
                                 border
                                 border-slate-200
-                                p-6
+                                p-4
                             "
                         >
 
@@ -222,7 +226,7 @@ export default function SolicitacaoModal({
                                 rounded-2xl
                                 border
                                 border-slate-200
-                                p-6
+                                p-4
                             "
                         >
 
@@ -251,8 +255,9 @@ export default function SolicitacaoModal({
                                     rounded-2xl
                                     border
                                     border-slate-200
-                                    p-6
-                                "
+                                    p-4
+                                    text-center
+                                    "
                             >
 
                                 <p className="text-xs uppercase text-slate-400">
