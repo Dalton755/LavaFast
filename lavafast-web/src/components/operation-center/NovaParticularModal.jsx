@@ -180,7 +180,11 @@ export default function NovaParticularModal({
 
                         <option>Dinheiro</option>
 
-                        <option>Cartão</option>
+                        <option>Débito</option>
+
+                        <option>Crédito</option>
+
+                        
 
                     </select>
 
