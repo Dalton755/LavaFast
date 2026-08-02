@@ -16,67 +16,43 @@ export default function PlateScannerModal({
 
         let stream;
 
-        const constraints = {
-            audio: false,
-            video: true
-        };
-
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-
-        videoRef.current.srcObject = stream;
-
-        await videoRef.current.play();
-
         async function iniciarCamera() {
-
-            if (!navigator.mediaDevices) {
-
-                alert("navigator.mediaDevices não existe.");
-
-                return;
-
-            }
-
-            if (!navigator.mediaDevices.getUserMedia) {
-
-                alert("getUserMedia não existe.");
-
-                return;
-
-            }
 
             try {
 
-                stream = await navigator.mediaDevices.getUserMedia({
+                const constraints = {
+
+                    audio: false,
 
                     video: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
+
+                        facingMode: {
+
+                            ideal: "environment"
+
+                        }
+
                     }
 
-                });
+                };
 
-                if (videoRef.current) {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-                    videoRef.current.srcObject = stream;
+                videoRef.current.srcObject = stream;
 
-                }
+                await videoRef.current.play();
 
-            } catch (erro) {
+            }
 
-                console.log(erro);
+            catch (erro) {
 
-                alert(JSON.stringify({
-                    name: erro.name,
-                    message: erro.message,
-                    constraint: erro.constraint,
-                    stack: erro.stack
-                }, null, 2));
+                console.error(erro);
+
+                alert(`${erro.name}\n\n${erro.message}`);
 
             }
 
         }
-
 
         iniciarCamera();
 
