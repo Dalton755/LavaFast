@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import PlateScannerModal from "../plate-reader/PlateScannerModal";
+
 export default function NovaParticularModal({
 
     aberto,
@@ -27,6 +29,8 @@ export default function NovaParticularModal({
         observacao: ""
 
     });
+
+    const [scannerAberto, setScannerAberto] = useState(false);
 
     if (!aberto) return null;
 
@@ -88,17 +92,35 @@ export default function NovaParticularModal({
 
                 <div className="space-y-4">
 
-                    <input
+                    <div className="flex gap-2">
 
-                        className="w-full border rounded-xl p-3"
+                        <input
 
-                        placeholder="Placa"
+                            className="flex-1 border rounded-xl p-3"
 
-                        value={form.placa}
+                            placeholder="Placa"
 
-                        onChange={e => alterar("placa", e.target.value.toUpperCase())}
+                            value={form.placa}
 
-                    />
+                            onChange={e => alterar("placa", e.target.value.toUpperCase())}
+
+                        />
+
+                        <button
+
+                            type="button"
+
+                            onClick={() => setScannerAberto(true)}
+
+                            className="px-4 rounded-xl bg-slate-200 hover:bg-slate-300"
+
+                        >
+
+                            📷
+
+                        </button>
+
+                    </div>
 
                     <select
 
@@ -184,7 +206,7 @@ export default function NovaParticularModal({
 
                         <option>Crédito</option>
 
-                        
+
 
                     </select>
 
@@ -233,6 +255,14 @@ export default function NovaParticularModal({
                 </div>
 
             </div>
+
+            <PlateScannerModal
+
+                aberto={scannerAberto}
+
+                fechar={() => setScannerAberto(false)}
+
+            />
 
         </div>
 
