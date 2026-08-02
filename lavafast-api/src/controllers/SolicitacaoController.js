@@ -60,15 +60,17 @@ class SolicitacaoController {
 
         } catch (error) {
 
-            return res.status(400).json({
+    console.error(error);
 
-                sucesso: false,
+    return res.status(400).json({
 
-                erro: error.message
+        sucesso: false,
 
-            });
+        erro: error.message
 
-        }
+    });
+
+}
 
     }
 

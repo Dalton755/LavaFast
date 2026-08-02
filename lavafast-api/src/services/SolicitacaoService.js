@@ -109,29 +109,49 @@ class SolicitacaoService {
 
         const solicitacao = await SolicitacaoRepository.buscarPorId(id);
 
-        if (!WorkflowService.validar(
+        switch (solicitacao.status) {
 
-            solicitacao.status,
+            case STATUS.SOLICITADO:
 
-            STATUS.FINALIZADA
+                await SolicitacaoRepository.atualizar(id, {
 
-        )) {
+                    status: STATUS.AGUARDANDO
 
-            throw new Error(
+                });
 
-                'Esta solicitação não pode ser finalizada.'
+            // continua
 
-            );
+            case STATUS.AGUARDANDO:
+
+                await SolicitacaoRepository.atualizar(id, {
+
+                    status: STATUS.EM_LAVAGEM,
+
+                    iniciada_em: new Date().toISOString()
+
+                });
+
+            // continua
+
+            case STATUS.EM_LAVAGEM:
+
+                return await SolicitacaoRepository.atualizar(id, {
+
+                    status: STATUS.FINALIZADA,
+
+                    finalizada_em: new Date().toISOString()
+
+                });
+
+            case STATUS.FINALIZADA:
+
+                return solicitacao;
+
+            default:
+
+                throw new Error("Status inválido.");
 
         }
-
-        return await SolicitacaoRepository.atualizar(id, {
-
-            status: STATUS.FINALIZADA,
-
-            finalizada_em: new Date().toISOString()
-
-        });
 
     }
 
