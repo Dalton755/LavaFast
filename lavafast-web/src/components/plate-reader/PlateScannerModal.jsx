@@ -18,7 +18,7 @@ export default function PlateScannerModal({
 
         async function iniciarCamera() {
 
-            
+
 
             if (!navigator.mediaDevices) {
 
@@ -41,13 +41,8 @@ export default function PlateScannerModal({
                 stream = await navigator.mediaDevices.getUserMedia({
 
                     video: {
-
-                        facingMode: {
-
-                            ideal: "environment"
-
-                        }
-
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
                     }
 
                 });
@@ -68,7 +63,7 @@ export default function PlateScannerModal({
 
         }
 
-      
+
         iniciarCamera();
 
         return () => {
