@@ -16,9 +16,18 @@ export default function PlateScannerModal({
 
         let stream;
 
+        const constraints = {
+            audio: false,
+            video: true
+        };
+
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        videoRef.current.srcObject = stream;
+
+        await videoRef.current.play();
+
         async function iniciarCamera() {
-
-
 
             if (!navigator.mediaDevices) {
 
@@ -55,9 +64,14 @@ export default function PlateScannerModal({
 
             } catch (erro) {
 
-                console.error(erro);
+                console.log(erro);
 
-                alert(erro.name + "\n\n" + erro.message);
+                alert(JSON.stringify({
+                    name: erro.name,
+                    message: erro.message,
+                    constraint: erro.constraint,
+                    stack: erro.stack
+                }, null, 2));
 
             }
 
