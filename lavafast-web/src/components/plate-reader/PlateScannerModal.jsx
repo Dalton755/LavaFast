@@ -26,11 +26,7 @@ export default function PlateScannerModal({
 
                     video: {
 
-                        facingMode: {
-
-                            ideal: "environment"
-
-                        }
+                        facingMode: "environment"
 
                     }
 
