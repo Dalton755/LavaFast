@@ -16,39 +16,40 @@ export default function PlateScannerModal({
 
         if (!aberto) return;
 
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
-
         let stream;
 
         async function iniciarCamera() {
 
             try {
 
-                // aguarda o vídeo existir no DOM
-                while (!videoRef.current) {
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                }
-
                 const video = videoRef.current;
 
-                const stream = await navigator.mediaDevices.getUserMedia({
+                if (!video) return;
+
+                stream = await navigator.mediaDevices.getUserMedia({
                     audio: false,
                     video: {
                         facingMode: {
                             ideal: "environment"
+                        },
+                        width: {
+                            ideal: 1920
+                        },
+                        height: {
+                            ideal: 1080
                         }
                     }
                 });
 
                 video.srcObject = stream;
 
-                await new Promise((resolve) => {
-                    video.onloadedmetadata = resolve;
-                });
-
-                await video.play();
+                video.onloadedmetadata = async () => {
+                    try {
+                        await video.play();
+                    } catch (e) {
+                        console.error(e);
+                    }
+                };
 
             } catch (erro) {
 
@@ -58,18 +59,19 @@ export default function PlateScannerModal({
 
         }
 
-        iniciarCamera();
+        const timer = setTimeout(iniciarCamera, 150);
 
         return () => {
 
-            if (videoRef.current?.srcObject) {
+            clearTimeout(timer);
 
-                videoRef.current.srcObject
-                    .getTracks()
-                    .forEach(track => track.stop());
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
 
+            if (videoRef.current) {
+                videoRef.current.pause();
                 videoRef.current.srcObject = null;
-
             }
 
         };
