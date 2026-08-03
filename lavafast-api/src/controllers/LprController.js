@@ -1,15 +1,33 @@
+import fs from "fs";
+import path from "path";
+
 export async function reconhecerPlaca(req, res) {
 
     try {
 
-        return res.status(200).json({
+        if (!req.file) {
+
+            return res.status(400).json({
+
+                success: false,
+                message: "Nenhuma imagem enviada."
+
+            });
+
+        }
+
+        return res.json({
 
             success: true,
-            message: "Endpoint LPR funcionando"
+            message: "Imagem recebida com sucesso.",
+
+            arquivo: req.file.filename
 
         });
 
-    } catch (erro) {
+    }
+
+    catch (erro) {
 
         console.error(erro);
 
