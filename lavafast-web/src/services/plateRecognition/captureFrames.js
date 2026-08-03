@@ -1,4 +1,4 @@
-export function captureFrame(video) {
+export function captureFrames(video) {
 
     const canvas = document.createElement("canvas");
 
@@ -25,21 +25,17 @@ export function captureFrame(video) {
     const ctx = canvas.getContext("2d");
 
     ctx.drawImage(
-
         video,
-
         sx,
         sy,
         sw,
         sh,
-
         0,
         0,
         sw,
         sh
-
     );
 
-    return canvas;
+    return [canvas];
 
 }

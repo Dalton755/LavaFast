@@ -4,19 +4,15 @@ import { voteCharacters } from "./voteCharacters";
 
 export async function recognizePlate(video) {
 
-    // Captura vários frames
-    const frames = await captureFrames(video);
+    // Captura apenas um frame
+    const frames = captureFrames(video);
 
-    // Executa OCR em todos os frames em paralelo
+    // Executa OCR
     const resultados = await Promise.all(
+    frames.map(frame => runOCR(frame))
+);
 
-        frames.map(frame => runOCR(frame))
-
-    );
-
-    console.table(resultados);
-
-    // Faz a votação
+    // A votação recebe um array
     const placa = voteCharacters(resultados);
 
     return placa;
