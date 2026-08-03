@@ -134,7 +134,17 @@ export default function PlateScannerModal({
 
         document.body.appendChild(img);
 
-        alert(resultado.data.text);
+        const texto = resultado.data.text.toUpperCase();
+
+        const placa =
+            texto.match(/[A-Z]{3}[0-9][A-Z][0-9]{2}/) ||
+            texto.match(/[A-Z]{3}[0-9]{4}/);
+
+        if (placa) {
+            alert(placa[0]);
+        } else {
+            alert("Placa não encontrada");
+        }
 
         console.log(imagem);
 
