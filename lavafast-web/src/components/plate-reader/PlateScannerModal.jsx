@@ -16,37 +16,43 @@ export default function PlateScannerModal({
 
         if (!aberto) return;
 
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
+
         let stream;
 
         async function iniciarCamera() {
 
             try {
 
-                const constraints = {
+                // aguarda o vídeo existir no DOM
+                while (!videoRef.current) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
 
+                const video = videoRef.current;
+
+                const stream = await navigator.mediaDevices.getUserMedia({
                     audio: false,
-
                     video: {
-
-                        facingMode: "environment"
-
+                        facingMode: {
+                            ideal: "environment"
+                        }
                     }
+                });
 
-                };
+                video.srcObject = stream;
 
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = resolve;
+                });
 
-                videoRef.current.srcObject = stream;
+                await video.play();
 
-                await videoRef.current.play();
+            } catch (erro) {
 
-            }
-
-            catch (erro) {
-
-                console.error(erro);
-
-                alert(`${erro.name}\n\n${erro.message}`);
+                console.error("Erro ao abrir câmera:", erro);
 
             }
 
@@ -56,9 +62,13 @@ export default function PlateScannerModal({
 
         return () => {
 
-            if (stream) {
+            if (videoRef.current?.srcObject) {
 
-                stream.getTracks().forEach(track => track.stop());
+                videoRef.current.srcObject
+                    .getTracks()
+                    .forEach(track => track.stop());
+
+                videoRef.current.srcObject = null;
 
             }
 
@@ -68,11 +78,11 @@ export default function PlateScannerModal({
 
     async function capturarImagem() {
 
-    if (!videoRef.current) return;
+        if (!videoRef.current) return;
 
-    const video = videoRef.current;
+        const video = videoRef.current;
 
-    const canvas = document.createElement("canvas");
+        const canvas = document.createElement("canvas");
 
         const larguraVideo = video.videoWidth;
         const alturaVideo = video.videoHeight;
@@ -123,7 +133,7 @@ export default function PlateScannerModal({
             }
         );
 
-       
+
 
         const texto = resultado.data.text.toUpperCase();
 
@@ -193,7 +203,7 @@ export default function PlateScannerModal({
                 "
             />
 
-            
+
 
             <button
 
