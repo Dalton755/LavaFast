@@ -1,50 +1,45 @@
-import { recognizePlate } from "./plateRecognitionService";
+import { captureFrames } from "./captureFrames";
+import { runOCR } from "./runOCR";
+import { voteCharacters } from "./voteCharacters";
+
+function esperar(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 export async function watchPlate(video, onDetected) {
 
-    let ultimaPlaca = "";
-
-    let repeticoes = 0;
+    const historico = [];
 
     let ativo = true;
 
-    async function loop() {
+    while (ativo) {
 
-        while (ativo) {
+        // Captura um conjunto de frames
+        const frames = await captureFrames(video);
 
-            const placa = await recognizePlate(video);
+        // OCR
+        const resultados = await Promise.all(
+            frames.map(frame => runOCR(frame))
+        );
 
-            if (!placa) {
+        // Melhor placa encontrada nesta rodada
+        const placa = voteCharacters(resultados);
 
-                repeticoes = 0;
+        if (placa) {
 
-                await esperar(150);
+            historico.push(placa);
 
-                continue;
-
+            if (historico.length > 5) {
+                historico.shift();
             }
 
-            if (placa === ultimaPlaca) {
+            console.log("Histórico:", historico);
 
-                repeticoes++;
+            const ocorrencias = historico.filter(
+                p => p === placa
+            ).length;
 
-            } else {
-
-                ultimaPlaca = placa;
-
-                repeticoes = 1;
-
-            }
-
-            console.log(
-
-                placa,
-
-                repeticoes
-
-            );
-
-            if (repeticoes >= 3) {
+            if (ocorrencias >= 4) {
 
                 ativo = false;
 
@@ -54,28 +49,10 @@ export async function watchPlate(video, onDetected) {
 
             }
 
-            await esperar(150);
-
         }
 
+        await esperar(200);
+
     }
-
-    loop();
-
-    return () => {
-
-        ativo = false;
-
-    };
-
-}
-
-function esperar(ms) {
-
-    return new Promise(resolve =>
-
-        setTimeout(resolve, ms)
-
-    );
 
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { watchPlate } from "../../services/plateRecognition/watchPlate";
+import { recognizePlate } from "../../services/plateRecognition/plateRecognitionService";
 
 export default function PlateScannerModal({
 
@@ -47,6 +48,20 @@ export default function PlateScannerModal({
                     try {
                         await video.play();
 
+                        const intervalo = setInterval(async () => {
+
+                            const placa = await recognizePlate(video);
+
+                            if (placa) {
+
+                                clearInterval(intervalo);
+
+                                alert(placa);
+
+                            }
+
+                        }, 500);
+
                         watchPlate(
 
                             video,
@@ -78,6 +93,8 @@ export default function PlateScannerModal({
         const timer = setTimeout(iniciarCamera, 150);
 
         return () => {
+
+            clearInterval(intervalo);
 
             clearTimeout(timer);
 
