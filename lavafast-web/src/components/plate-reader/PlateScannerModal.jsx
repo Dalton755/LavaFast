@@ -74,13 +74,44 @@ export default function PlateScannerModal({
 
         const video = videoRef.current;
 
-        canvas.width = video.videoWidth;
+        const larguraVideo = video.videoWidth;
+        const alturaVideo = video.videoHeight;
 
-        canvas.height = video.videoHeight;
+        // tamanho do retângulo na tela
+        const guiaLargura = 320;
+        const guiaAltura = 110;
+
+        // escala entre vídeo real e vídeo exibido
+        const escalaX = larguraVideo / video.clientWidth;
+        const escalaY = alturaVideo / video.clientHeight;
+
+        // posição do retângulo na tela
+        const esquerda = (video.clientWidth - guiaLargura) / 2;
+        const topo = (video.clientHeight - guiaAltura) / 2;
+
+        // coordenadas reais do vídeo
+        const sx = esquerda * escalaX;
+        const sy = topo * escalaY;
+        const sw = guiaLargura * escalaX;
+        const sh = guiaAltura * escalaY;
+
+        // canvas agora terá somente o tamanho da placa
+        canvas.width = sw;
+        canvas.height = sh;
 
         const ctx = canvas.getContext("2d");
 
-        ctx.drawImage(video, 0, 0);
+        ctx.drawImage(
+            video,
+            sx,
+            sy,
+            sw,
+            sh,
+            0,
+            0,
+            sw,
+            sh
+        );
 
         const imagem = canvas.toDataURL("image/jpeg");
 
@@ -91,6 +122,17 @@ export default function PlateScannerModal({
                 logger: (m) => console.log(m)
             }
         );
+
+        const img = document.createElement("img");
+        img.src = imagem;
+        img.style.position = "fixed";
+        img.style.left = "10px";
+        img.style.bottom = "10px";
+        img.style.width = "320px";
+        img.style.border = "4px solid red";
+        img.style.zIndex = "99999";
+
+        document.body.appendChild(img);
 
         alert(resultado.data.text);
 
@@ -109,12 +151,45 @@ export default function PlateScannerModal({
 
                 ref={videoRef}
 
+
                 autoPlay
 
                 playsInline
 
                 className="w-full h-full object-cover"
 
+            />
+
+            <div
+                className="
+                    absolute
+                    top-10
+                    left-0
+                    right-0
+                    text-center
+                    text-white
+                    font-bold
+                    text-xl
+                "
+            >
+                Posicione a placa dentro do retângulo
+            </div>
+
+            <div
+                className="
+                    absolute
+                    left-1/2
+                    top-1/2
+                    -translate-x-1/2
+                    -translate-y-1/2
+                    w-[320px]
+                    h-[110px]
+                    border-4
+                    border-green-500
+                    rounded-xl
+                    shadow-[0_0_20px_rgba(0,255,0,.8)]
+                    pointer-events-none
+                "
             />
 
             <canvas
