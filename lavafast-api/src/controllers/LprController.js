@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { recognizePlate } from "../services/lpr/recognizePlate.js";
 
 export async function reconhecerPlaca(req, res) {
 
@@ -16,12 +17,17 @@ export async function reconhecerPlaca(req, res) {
 
         }
 
+        const resultado = await recognizePlate(req.file.path);
+
+        console.log(resultado);
+
         return res.json({
 
             success: true,
-            message: "Imagem recebida com sucesso.",
 
-            arquivo: req.file.filename
+            texto: resultado.texto,
+
+            confidence: resultado.confidence
 
         });
 
