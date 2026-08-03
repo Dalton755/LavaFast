@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { recognizePlate } from "../../services/plateRecognition/plateRecognitionService";
+import { watchPlate } from "../../services/plateRecognition/watchPlate";
 
 export default function PlateScannerModal({
 
@@ -46,6 +46,22 @@ export default function PlateScannerModal({
                 video.onloadedmetadata = async () => {
                     try {
                         await video.play();
+
+                        watchPlate(
+
+                            video,
+
+                            (placa) => {
+
+                                console.log("Placa encontrada:", placa);
+
+                            }
+
+                        );
+
+
+
+
                     } catch (e) {
                         console.error(e);
                     }
@@ -78,71 +94,7 @@ export default function PlateScannerModal({
 
     }, [aberto]);
 
-    async function capturarImagem() {
 
-        if (!videoRef.current) return;
-
-        const video = videoRef.current;
-
-        const canvas = document.createElement("canvas");
-
-        const larguraVideo = video.videoWidth;
-        const alturaVideo = video.videoHeight;
-
-        // tamanho do retângulo na tela
-        const guiaLargura = 320;
-        const guiaAltura = 110;
-
-        // escala entre vídeo real e vídeo exibido
-        const escalaX = larguraVideo / video.clientWidth;
-        const escalaY = alturaVideo / video.clientHeight;
-
-        // posição do retângulo na tela
-        const esquerda = (video.clientWidth - guiaLargura) / 2;
-        const topo = (video.clientHeight - guiaAltura) / 2;
-
-        // coordenadas reais do vídeo
-        const sx = esquerda * escalaX;
-        const sy = topo * escalaY;
-        const sw = guiaLargura * escalaX;
-        const sh = guiaAltura * escalaY;
-
-        // canvas agora terá somente o tamanho da placa
-        canvas.width = sw;
-        canvas.height = sh;
-
-        const ctx = canvas.getContext("2d");
-
-        ctx.drawImage(
-            video,
-            sx,
-            sy,
-            sw,
-            sh,
-            0,
-            0,
-            sw,
-            sh
-        );
-
-        const imagem = canvas.toDataURL("image/jpeg");
-
-        const placa = await recognizePlate(video);
-
-        if (placa) {
-
-            alert(placa);
-
-        } else {
-
-            alert("Placa não encontrada");
-
-        }
-
-        console.log(imagem);
-
-
-    }
 
     if (!aberto) return null;
 
@@ -197,17 +149,7 @@ export default function PlateScannerModal({
 
 
 
-            <button
 
-                onClick={capturarImagem}
-
-                className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-green-600 text-white rounded-full px-8 py-4 text-lg shadow-xl"
-
-            >
-
-                Capturar
-
-            </button>
 
             <button
 
