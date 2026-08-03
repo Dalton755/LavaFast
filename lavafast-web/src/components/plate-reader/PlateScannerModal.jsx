@@ -9,6 +9,7 @@ export default function PlateScannerModal({
 }) {
 
     const videoRef = useRef(null);
+    const canvasRef = useRef(null);
 
     useEffect(() => {
 
@@ -64,6 +65,30 @@ export default function PlateScannerModal({
 
     }, [aberto]);
 
+    function capturarImagem() {
+
+        if (!videoRef.current || !canvasRef.current) return;
+
+        const canvas = canvasRef.current;
+
+        const video = videoRef.current;
+
+        canvas.width = video.videoWidth;
+
+        canvas.height = video.videoHeight;
+
+        const ctx = canvas.getContext("2d");
+
+        ctx.drawImage(video, 0, 0);
+
+        const imagem = canvas.toDataURL("image/jpeg");
+
+        console.log(imagem);
+
+        alert("Imagem capturada!");
+
+    }
+
     if (!aberto) return null;
 
     return (
@@ -81,6 +106,26 @@ export default function PlateScannerModal({
                 className="w-full h-full object-cover"
 
             />
+
+            <canvas
+
+                ref={canvasRef}
+
+                className="hidden"
+
+            />
+
+            <button
+
+                onClick={capturarImagem}
+
+                className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-green-600 text-white rounded-full px-8 py-4 text-lg shadow-xl"
+
+            >
+
+                Capturar
+
+            </button>
 
             <button
 
