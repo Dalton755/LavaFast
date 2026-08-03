@@ -68,11 +68,11 @@ export default function PlateScannerModal({
 
     async function capturarImagem() {
 
-        if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current) return;
 
-        const canvas = canvasRef.current;
+    const video = videoRef.current;
 
-        const video = videoRef.current;
+    const canvas = document.createElement("canvas");
 
         const larguraVideo = video.videoWidth;
         const alturaVideo = video.videoHeight;
@@ -123,16 +123,7 @@ export default function PlateScannerModal({
             }
         );
 
-        const img = document.createElement("img");
-        img.src = imagem;
-        img.style.position = "fixed";
-        img.style.left = "10px";
-        img.style.bottom = "10px";
-        img.style.width = "320px";
-        img.style.border = "4px solid red";
-        img.style.zIndex = "99999";
-
-        document.body.appendChild(img);
+       
 
         const texto = resultado.data.text.toUpperCase();
 
@@ -202,13 +193,7 @@ export default function PlateScannerModal({
                 "
             />
 
-            <canvas
-
-                ref={canvasRef}
-
-                className="hidden"
-
-            />
+            
 
             <button
 
