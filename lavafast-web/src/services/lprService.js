@@ -1,26 +1,23 @@
 export async function reconhecerPlaca(imagem) {
 
-    const form = new FormData();
+    console.log("Enviando imagem para API...");
 
-    form.append("file", imagem);
+    const form = new FormData();
+    form.append("imagem", imagem);
 
     const resposta = await fetch(
-
         `${import.meta.env.VITE_API_URL}/api/lpr`,
-
         {
             method: "POST",
             body: form
         }
-
     );
 
-    if (!resposta.ok) {
+    console.log("Status:", resposta.status);
 
-        return null;
+    const dados = await resposta.json();
 
-    }
+    console.log("Resposta da API:", dados);
 
-    return await resposta.json();
-
+    return dados;
 }
