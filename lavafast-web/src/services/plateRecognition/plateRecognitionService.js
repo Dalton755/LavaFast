@@ -1,20 +1,30 @@
 import { captureFrame } from "./captureFrame";
-import { runOCR } from "./runOCR";
-import { voteCharacters } from "./voteCharacters";
+import { reconhecerPlaca } from "../lprService";
+
+function canvasToBlob(canvas) {
+
+    return new Promise(resolve => {
+
+        canvas.toBlob(
+
+            blob => resolve(blob),
+
+            "image/jpeg",
+
+            0.95
+
+        );
+
+    });
+
+}
 
 export async function recognizePlate(video) {
 
-    // Captura apenas um frame
-    const frame = captureFrame(video);
+    const canvas = captureFrame(video);
 
-    // Executa OCR
-    const resultados = await Promise.all(
-    frame.map(frame => runOCR(frame))
-);
+    const blob = await canvasToBlob(canvas);
 
-    // A votação recebe um array
-    const placa = voteCharacters(resultados);
-
-    return placa;
+    return await reconhecerPlaca(blob);
 
 }
