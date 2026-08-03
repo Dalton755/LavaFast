@@ -1,15 +1,15 @@
-import { captureFrames } from "./captureFrames";
+import { captureFrame } from "./captureFrame";
 import { runOCR } from "./runOCR";
 import { voteCharacters } from "./voteCharacters";
 
 export async function recognizePlate(video) {
 
     // Captura apenas um frame
-    const frames = captureFrames(video);
+    const frame = captureFrame(video);
 
     // Executa OCR
     const resultados = await Promise.all(
-    frames.map(frame => runOCR(frame))
+    frame.map(frame => runOCR(frame))
 );
 
     // A votação recebe um array
