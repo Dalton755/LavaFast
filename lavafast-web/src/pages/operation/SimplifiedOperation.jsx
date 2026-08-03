@@ -11,6 +11,7 @@ import NovaLocalizaModal from "../../components/operation-center/NovaLocalizaMod
 import useLoja from "../../hooks/useLoja";
 import logoLocaliza from "../../assets/localiza.png";
 
+
 export default function SimplifiedOperation() {
 
     const {
@@ -41,6 +42,8 @@ export default function SimplifiedOperation() {
 
     const [modalLocaliza, setModalLocaliza] = useState(false);
 
+    const [pesquisa, setPesquisa] = useState("");
+
     const [operacao, setOperacao] = useState("LOCALIZA");
 
     const {
@@ -59,6 +62,8 @@ export default function SimplifiedOperation() {
                 {/* Mobile */}
                 <h1 className="text-3xl font-bold mb-8 lg:hidden">
 
+
+
                     {operacao === "LOCALIZA"
 
                         ? "PAINEL LOCALIZA"
@@ -74,6 +79,35 @@ export default function SimplifiedOperation() {
 
                 </h1>
             </>
+
+            <div className="mb-6">
+
+                <input
+
+                    type="text"
+
+                    placeholder="Pesquisar placa..."
+
+                    value={pesquisa}
+
+                    onChange={(e) => setPesquisa(e.target.value.toUpperCase())}
+
+                    className="
+                                w-full
+                                lg:w-[420px]
+                                border
+                                rounded-xl
+                                px-4
+                                py-3
+                                shadow-sm
+                                focus:outline-none
+                                focus:ring-2
+                                focus:ring-blue-500
+                            "
+
+                />
+
+            </div>
 
             <div className="lg:hidden flex bg-white rounded-2xl shadow p-1 mb-6">
 
@@ -209,19 +243,35 @@ export default function SimplifiedOperation() {
 
                                 (
 
-                                    localiza.map(item => (
+                                    localiza
 
-                                        <LocalizaCard
+                                        .filter(item =>
 
-                                            key={item.id}
+                                            item.placa
 
-                                            solicitacao={item}
+                                                ?.toUpperCase()
 
-                                            onConcluir={concluirLocaliza}
+                                                .includes(
 
-                                        />
+                                                    pesquisa.toUpperCase()
 
-                                    ))
+                                                )
+
+                                        )
+
+                                        .map(item => (
+
+                                            <LocalizaCard
+
+                                                key={item.id}
+
+                                                solicitacao={item}
+
+                                                onConcluir={concluirLocaliza}
+
+                                            />
+
+                                        ))
 
                                 )
 
@@ -295,19 +345,35 @@ export default function SimplifiedOperation() {
 
                                 : (
 
-                                    lavagens.map(lavagem => (
+                                    lavagens
 
-                                        <ParticularCard
+                                        .filter(lavagem =>
 
-                                            key={lavagem.id}
+                                            lavagem.placa
 
-                                            lavagem={lavagem}
+                                                ?.toUpperCase()
 
-                                            onConcluir={concluir}
+                                                .includes(
 
-                                        />
+                                                    pesquisa.toUpperCase()
 
-                                    ))
+                                                )
+
+                                        )
+
+                                        .map(lavagem => (
+
+                                            <ParticularCard
+
+                                                key={lavagem.id}
+
+                                                lavagem={lavagem}
+
+                                                onConcluir={concluir}
+
+                                            />
+
+                                        ))
 
                                 )
 

@@ -29,6 +29,14 @@ export default function LocalizaCard({
 
                     </h2>
 
+                    <p className="text-sm text-slate-500">
+
+                        Solicitação #
+
+                        {solicitacao.numero_solicitacao}
+
+                    </p>
+
                     <p className="text-sm text-slate-500 mt-1">
 
                         {solicitacao.loja}
