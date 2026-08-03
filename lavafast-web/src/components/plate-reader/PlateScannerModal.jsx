@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import Tesseract from "tesseract.js";
+import { recognizePlate } from "../../services/plateRecognition/plateRecognitionService";
 
 export default function PlateScannerModal({
 
@@ -127,26 +127,16 @@ export default function PlateScannerModal({
 
         const imagem = canvas.toDataURL("image/jpeg");
 
-        const resultado = await Tesseract.recognize(
-            imagem,
-            "eng",
-            {
-                logger: (m) => console.log(m)
-            }
-        );
-
-
-
-        const texto = resultado.data.text.toUpperCase();
-
-        const placa =
-            texto.match(/[A-Z]{3}[0-9][A-Z][0-9]{2}/) ||
-            texto.match(/[A-Z]{3}[0-9]{4}/);
+        const placa = await recognizePlate(video);
 
         if (placa) {
-            alert(placa[0]);
+
+            alert(placa);
+
         } else {
+
             alert("Placa não encontrada");
+
         }
 
         console.log(imagem);
