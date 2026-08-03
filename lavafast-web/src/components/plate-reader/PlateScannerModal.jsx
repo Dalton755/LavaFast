@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import Tesseract from "tesseract.js";
 
 export default function PlateScannerModal({
 
@@ -65,7 +66,7 @@ export default function PlateScannerModal({
 
     }, [aberto]);
 
-    function capturarImagem() {
+    async function capturarImagem() {
 
         if (!videoRef.current || !canvasRef.current) return;
 
@@ -83,9 +84,18 @@ export default function PlateScannerModal({
 
         const imagem = canvas.toDataURL("image/jpeg");
 
+        const resultado = await Tesseract.recognize(
+            imagem,
+            "eng",
+            {
+                logger: (m) => console.log(m)
+            }
+        );
+
+        alert(resultado.data.text);
+
         console.log(imagem);
 
-        alert("Imagem capturada!");
 
     }
 
