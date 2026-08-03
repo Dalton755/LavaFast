@@ -1,36 +1,45 @@
-export async function captureFrames(
-    video,
-    quantidade = 8,
-    intervalo = 120
-) {
+export function captureFrame(video) {
 
-    const frames = [];
+    const canvas = document.createElement("canvas");
 
-    for (let i = 0; i < quantidade; i++) {
+    const larguraVideo = video.videoWidth;
+    const alturaVideo = video.videoHeight;
 
-        const canvas = document.createElement("canvas");
+    const guiaLargura = 320;
+    const guiaAltura = 110;
 
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+    const escalaX = larguraVideo / video.clientWidth;
+    const escalaY = alturaVideo / video.clientHeight;
 
-        const ctx = canvas.getContext("2d");
+    const esquerda = (video.clientWidth - guiaLargura) / 2;
+    const topo = (video.clientHeight - guiaAltura) / 2;
 
-        ctx.drawImage(
-            video,
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
+    const sx = esquerda * escalaX;
+    const sy = topo * escalaY;
+    const sw = guiaLargura * escalaX;
+    const sh = guiaAltura * escalaY;
 
-        frames.push(canvas);
+    canvas.width = sw;
+    canvas.height = sh;
 
-        await new Promise(resolve =>
-            setTimeout(resolve, intervalo)
-        );
+    const ctx = canvas.getContext("2d");
 
-    }
+    ctx.drawImage(
 
-    return frames;
+        video,
+
+        sx,
+        sy,
+        sw,
+        sh,
+
+        0,
+        0,
+        sw,
+        sh
+
+    );
+
+    return canvas;
 
 }

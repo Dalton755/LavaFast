@@ -1,50 +1,53 @@
 export function voteCharacters(resultados) {
 
     if (!resultados.length) {
-
         return null;
-
     }
 
-    // Considera somente placas com 7 caracteres
-    const placas = resultados.filter(r => r.texto.length === 7);
+    const validos = resultados.filter(resultado =>
+        resultado.symbols &&
+        resultado.symbols.length >= 7
+    );
 
-    if (!placas.length) {
-
+    if (!validos.length) {
         return null;
-
     }
 
-    let resultadoFinal = "";
+    let placa = "";
 
     for (let posicao = 0; posicao < 7; posicao++) {
 
         const votos = {};
 
-        placas.forEach(({ texto, confidence }) => {
+        validos.forEach(resultado => {
 
-            const caractere = texto[posicao];
+            const simbolo = resultado.symbols[posicao];
 
-            if (!caractere) return;
+            if (!simbolo) return;
+
+            const caractere = simbolo.text.toUpperCase();
+
+            const confianca = simbolo.confidence ?? 0;
 
             if (!votos[caractere]) {
-
                 votos[caractere] = 0;
-
             }
 
-            votos[caractere] += confidence;
+            votos[caractere] += confianca;
 
         });
 
         const vencedor = Object.entries(votos)
-
             .sort((a, b) => b[1] - a[1])[0];
 
-        resultadoFinal += vencedor[0];
+        if (!vencedor) {
+            return null;
+        }
+
+        placa += vencedor[0];
 
     }
 
-    return resultadoFinal;
+    return placa;
 
 }
