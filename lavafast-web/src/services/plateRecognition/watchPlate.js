@@ -1,49 +1,62 @@
-import { captureFrames } from "./captureFrames";
-import { runOCR } from "./runOCR";
-import { voteCharacters } from "./voteCharacters";
+import { captureFrame } from "./captureFrame";
+import { reconhecerPlaca } from "../lprService";
 
 function esperar(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export async function watchPlate(video, onDetected) {
+function canvasToBlob(canvas) {
 
-    const historico = [];
+    return new Promise(resolve => {
+
+        canvas.toBlob(
+
+            blob => resolve(blob),
+
+            "image/jpeg",
+
+            0.95
+
+        );
+
+    });
+
+}
+
+export async function watchPlate(video, onDetected) {
 
     let ativo = true;
 
     while (ativo) {
 
-        // Captura um conjunto de frames
-        const frames = await captureFrames(video);
+        if (!video.videoWidth) {
 
-        // OCR
-        const resultados = await Promise.all(
-            frames.map(frame => runOCR(frame))
-        );
+            await esperar(300);
+            continue;
 
-        // Melhor placa encontrada nesta rodada
-        const placa = voteCharacters(resultados);
+        }
 
-        if (placa) {
+        try {
 
-            historico.push(placa);
+            const canvas = captureFrame(video);
 
-            if (historico.length > 5) {
-                historico.shift();
-            }
+            const blob = await canvasToBlob(canvas);
 
-            console.log("Histórico:", historico);
+            const resultado = await reconhecerPlaca(blob);
 
-            const ocorrencias = historico.filter(
-                p => p === placa
-            ).length;
+            console.log("OCR:", resultado);
 
-            if (ocorrencias >= 4) {
+            if (
+
+                resultado &&
+                resultado.placa &&
+                resultado.confidence >= 95
+
+            ) {
 
                 ativo = false;
 
-                onDetected(placa);
+                onDetected(resultado.placa);
 
                 return;
 
@@ -51,7 +64,13 @@ export async function watchPlate(video, onDetected) {
 
         }
 
-        await esperar(200);
+        catch (erro) {
+
+            console.error("Erro OCR:", erro);
+
+        }
+
+        await esperar(500);
 
     }
 

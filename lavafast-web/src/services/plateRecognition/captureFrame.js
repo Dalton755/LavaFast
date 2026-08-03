@@ -1,4 +1,4 @@
-export function captureFrames(video) {
+export function captureFrame(video) {
 
     const canvas = document.createElement("canvas");
 
@@ -36,6 +36,6 @@ export function captureFrames(video) {
         sh
     );
 
-    return [canvas];
+    return canvas;
 
 }
