@@ -9,6 +9,7 @@ import lavagensParticularesRoutes from './routes/lavagensParticulares.js';
 import { iniciarSchedulers } from './scheduler/index.js';
 import solicitacaoManualRoutes from "./routes/solicitacaoManual.js";
 import tiposLavagemRoutes from "./routes/tiposLavagem.js";
+import lprRoutes from "./routes/lpr.js";
 
 
 const app = express();
@@ -75,5 +76,7 @@ app.use(
     '/api/lavagens-particulares',
     lavagensParticularesRoutes
 );
+
+app.use("/api/lpr",lprRoutes);
 
 export default app;
