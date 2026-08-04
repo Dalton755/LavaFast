@@ -47,6 +47,19 @@ export default function PlateScannerModal({
                     try {
                         await video.play();
 
+                        // Espera 2 segundos para a câmera estabilizar
+                        setTimeout(() => {
+
+                            watchPlate(video, (placa) => {
+
+                                alert(placa);
+
+                                fechar();
+
+                            });
+
+                        }, 2000);
+
 
 
                         watchPlate(
