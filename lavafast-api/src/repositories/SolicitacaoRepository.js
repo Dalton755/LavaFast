@@ -91,6 +91,33 @@ class SolicitacaoRepository {
 
     }
 
+    async listarConcluidas() {
+
+        const {
+
+            data,
+
+            error
+
+        } = await supabase
+            .schema("operacoes")
+            .from("solicitacoes_lavagem")
+            .select("*")
+            .eq("status", "FINALIZADA")
+            .order("finalizada_em", {
+                ascending: false
+            });
+
+        if (error) {
+
+            throw error;
+
+        }
+
+        return data;
+
+    }
+
     async existePorNumero(numeroSolicitacao) {
 
         const {

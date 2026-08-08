@@ -16,6 +16,16 @@ export async function listarSolicitacoes(lojas) {
 
 }
 
+export async function listarSolicitacoesConcluidas() {
+
+    const { data } = await api.get(
+        '/solicitacoes/concluidas'
+    );
+
+    return data;
+
+}
+
 export async function movimentarSolicitacao(
 
     solicitacaoId,

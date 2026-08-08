@@ -73,24 +73,48 @@ export default function useOperacaoSimplificada() {
 
     async function criarLocalizaManual(dados) {
 
-        await criarSolicitacaoManual(dados);
+        try {
 
-        await carregar();
+            await criarSolicitacaoManual(dados);
+
+            await carregar();
+
+            return true;
+
+        }
+
+        catch (erro) {
+
+            if (erro.response?.status === 409) {
+
+                alert(erro.response.data.erro);
+
+                return false;
+
+            }
+
+            alert("Erro ao criar solicitação.");
+
+            console.error(erro);
+
+            return false;
+
+        }
 
     }
 
     return {
 
-    loading,
+        loading,
 
-    localiza,
+        localiza,
 
-    concluirLocaliza,
+        concluirLocaliza,
 
-    criarLocalizaManual,
+        criarLocalizaManual,
 
-    recarregar: carregar
+        recarregar: carregar
 
-};
+    };
 
 }

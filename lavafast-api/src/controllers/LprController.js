@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { recognizePlate } from "../services/lpr/recognizePlate.js";
-
+import { reconhecerPlacaPython  } from "../services/lpr/LprService.js";
 export async function reconhecerPlaca(req, res) {
 
     try {
@@ -17,19 +16,11 @@ export async function reconhecerPlaca(req, res) {
 
         }
 
-        const resultado = await recognizePlate(req.file.path);
+        const resultado = await reconhecerPlacaPython (req.file.path);
 
         console.log(resultado);
 
-        return res.json({
-
-            success: true,
-
-            texto: resultado.texto,
-
-            confidence: resultado.confidence
-
-        });
+        return res.json(resultado);
 
     }
 

@@ -12,6 +12,11 @@ router.get(
 
 );
 
+router.get(
+    '/concluidas',
+    SolicitacaoController.listarConcluidas
+);
+
 router.put(
 
     '/:id/movimentar',

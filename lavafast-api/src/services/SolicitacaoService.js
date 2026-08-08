@@ -1,15 +1,10 @@
 import {
-
     listarEmails,
-
     obterTextoEmail
-
 } from './gmail/gmail.js';
 
 import {
-
     parseLocaliza
-
 } from './localiza/parser.js';
 
 import SolicitacaoRepository from '../repositories/SolicitacaoRepository.js';
@@ -20,6 +15,7 @@ import {
 
 import STATUS from '../constants/status.js';
 import WorkflowService from './WorkflowService.js';
+import LavagemParticularRepository from '../repositories/LavagemParticularRepository.js';
 
 class SolicitacaoService {
 
@@ -155,7 +151,46 @@ class SolicitacaoService {
 
     }
 
+    async listarConcluidas() {
 
+        const localiza =
+            await SolicitacaoRepository.listarConcluidas();
+
+        const particulares =
+            await LavagemParticularRepository.listarConcluidas();
+
+        const resultado = [
+
+            ...localiza.map(item => ({
+
+                ...item,
+
+                origem: "LOCALIZA"
+
+            })),
+
+            ...particulares.map(item => ({
+
+                ...item,
+
+                origem: "PARTICULAR"
+
+            }))
+
+        ];
+
+        resultado.sort(
+
+            (a, b) =>
+
+                new Date(b.finalizada_em) -
+                new Date(a.finalizada_em)
+
+        );
+
+        return resultado;
+
+    }
 
     async importarDaLocaliza() {
 

@@ -30,6 +30,31 @@ class SolicitacaoController {
 
     }
 
+    async listarConcluidas(req, res) {
+
+        try {
+
+            const dados =
+                await SolicitacaoService.listarConcluidas();
+
+            return res.json(dados);
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            return res.status(500).json({
+
+                erro: error.message
+
+            });
+
+        }
+
+    }
+
     async movimentar(req, res) {
 
         const { funcionario } = req.body;
@@ -60,17 +85,17 @@ class SolicitacaoController {
 
         } catch (error) {
 
-    console.error(error);
+            console.error(error);
 
-    return res.status(400).json({
+            return res.status(400).json({
 
-        sucesso: false,
+                sucesso: false,
 
-        erro: error.message
+                erro: error.message
 
-    });
+            });
 
-}
+        }
 
     }
 

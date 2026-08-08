@@ -17,6 +17,23 @@ class LavagemParticularRepository {
 
     }
 
+    async listarConcluidas() {
+
+        const { data, error } = await supabase
+            .schema("operacoes")
+            .from("lavagens_avulsas")
+            .select("*")
+            .eq("status", "FINALIZADA")
+            .order("finalizada_em", {
+                ascending: false
+            });
+
+        if (error) throw error;
+
+        return data;
+
+    }
+
     async criar(dados) {
 
         const { data, error } = await supabase

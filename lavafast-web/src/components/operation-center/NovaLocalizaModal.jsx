@@ -16,6 +16,8 @@ export default function NovaLocalizaModal({
 
     const [form, setForm] = useState({
 
+        numeroSolicitacao: "",
+
         placa: "",
 
         loja_id: "",
@@ -48,17 +50,27 @@ export default function NovaLocalizaModal({
 
     async function salvar() {
 
-        await onSalvar({
+        const sucesso = await onSalvar({
 
             ...form,
+
+            numero_solicitacao: form.numeroSolicitacao,
 
             valor: Number(form.valor)
 
         });
 
+        if (!sucesso) {
+
+            return;
+
+        }
+
         fechar();
 
         setForm({
+
+            numeroSolicitacao: "",
 
             placa: "",
 
@@ -89,6 +101,35 @@ export default function NovaLocalizaModal({
                     Nova Solicitação Localiza
 
                 </h2>
+
+                <div>
+
+                    <label className="block text-sm font-medium mb-1">
+
+                        Número da Solicitação
+
+                    </label>
+
+                    <input
+
+                        type="text"
+
+                        value={form.numeroSolicitacao}
+
+                        onChange={(e) =>
+                            alterar(
+                                "numeroSolicitacao",
+                                e.target.value.replace(/\D/g, "")
+                            )
+                        }
+
+                        className="w-full border rounded-lg px-3 py-2"
+
+                        placeholder="Ex.: 33587473"
+
+                    />
+
+                </div>
 
                 <div className="space-y-4">
 

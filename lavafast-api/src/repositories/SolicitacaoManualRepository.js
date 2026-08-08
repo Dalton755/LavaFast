@@ -2,14 +2,33 @@ import supabase from "../config/supabase.js";
 
 export async function criarSolicitacaoManual(dados) {
 
-    const numeroSolicitacao = Date.now();
+
+    const { data: existente, error: erroConsulta } = await supabase
+        .schema("operacoes")
+        .from("solicitacoes_lavagem")
+        .select("id")
+        .eq("numero_solicitacao", dados.numero_solicitacao)
+        .maybeSingle();
+
+    if (erroConsulta) {
+
+        throw erroConsulta;
+
+    }
+
+    if (existente) {
+
+        throw new Error("SOLICITACAO_DUPLICADA");
+
+    }
+
 
     const { data, error } = await supabase
         .schema("operacoes")
         .from("solicitacoes_lavagem")
         .insert({
 
-            numero_solicitacao: numeroSolicitacao,
+            numero_solicitacao: dados.numero_solicitacao,
 
             placa: dados.placa,
 

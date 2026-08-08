@@ -4,7 +4,7 @@ import fs from "fs";
 
 const LPR_URL = "http://127.0.0.1:8000/ocr";
 
-export async function reconhecerPlaca(caminhoImagem) {
+export async function reconhecerPlacaPython(caminhoImagem) {
 
     const form = new FormData();
 

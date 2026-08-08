@@ -18,6 +18,18 @@ export async function criar(req, res) {
 
     catch (erro) {
 
+        if (erro.message === "SOLICITACAO_DUPLICADA") {
+
+            return res.status(409).json({
+
+                sucesso: false,
+
+                erro: "Já existe uma solicitação com esse número."
+
+            });
+
+        }
+
         return res.status(500).json({
 
             sucesso: false,

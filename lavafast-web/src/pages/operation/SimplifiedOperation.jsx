@@ -12,7 +12,9 @@ import useLoja from "../../hooks/useLoja";
 import logoLocaliza from "../../assets/localiza.png";
 
 
-export default function SimplifiedOperation() {
+export default function SimplifiedOperation({
+    abrirConcluidos
+}) {
 
     const {
 
@@ -106,6 +108,26 @@ export default function SimplifiedOperation() {
                             "
 
                 />
+
+            </div>
+
+            <div className="mb-6">
+
+                <button
+                    onClick={abrirConcluidos}
+                    className="
+                        bg-slate-800
+                        text-white
+                        px-5
+                        py-3
+                        rounded-xl
+                        font-semibold
+                        hover:bg-slate-900
+                        transition
+                    "
+                >
+                    ✓ Concluídos
+                </button>
 
             </div>
 
