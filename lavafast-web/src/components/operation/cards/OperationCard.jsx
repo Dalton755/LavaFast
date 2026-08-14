@@ -202,20 +202,8 @@ export default function OperationCard({
             <hr className="my-5 border-slate-200" />
 
             <StatusTimer
-
                 status={solicitacao.status}
-
-                inicio={
-
-                    solicitacao.status === "EM_LAVAGEM"
-
-                        ? solicitacao.iniciada_em
-
-                        : solicitacao.recebida_em
-
-                }
-
-
+                inicio={solicitacao.recebida_em}
             />
 
             <div

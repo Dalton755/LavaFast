@@ -1,3 +1,53 @@
+import { useEffect, useState } from "react";
+import TempoOperacao from "./TempoOperacao";
+
+function formatarTempoDecorrido(dataInicial) {
+
+    if (!dataInicial) {
+        return "--";
+    }
+
+    const inicio = new Date(dataInicial);
+    const agora = new Date();
+
+    const diferenca = agora - inicio;
+
+    if (diferenca < 0) {
+        return "0min";
+    }
+
+    const minutosTotais = Math.floor(
+        diferenca / 1000 / 60
+    );
+
+    const dias = Math.floor(
+        minutosTotais / 1440
+    );
+
+    const horas = Math.floor(
+        (minutosTotais % 1440) / 60
+    );
+
+    const minutos =
+        minutosTotais % 60;
+
+    if (dias > 0) {
+
+        return `${dias}d ${horas}h ${minutos}min`;
+
+    }
+
+    if (horas > 0) {
+
+        return `${horas}h ${minutos}min`;
+
+    }
+
+    return `${minutos}min`;
+
+}
+
+
 export default function LocalizaCard({
 
     solicitacao,
@@ -5,6 +55,35 @@ export default function LocalizaCard({
     onConcluir
 
 }) {
+
+    const [agora, setAgora] = useState(
+        new Date()
+    );
+
+
+    useEffect(() => {
+
+        const intervalo = setInterval(() => {
+
+            setAgora(new Date());
+
+        }, 60000);
+
+
+        return () => {
+
+            clearInterval(intervalo);
+
+        };
+
+    }, []);
+
+
+    const tempoDecorrido =
+        formatarTempoDecorrido(
+            solicitacao.recebida_em
+        );
+
 
     return (
 
@@ -63,6 +142,24 @@ export default function LocalizaCard({
 
             </div>
 
+            <div className="mt-4 flex items-center gap-2 text-sm">
+
+                <span className="font-semibold text-slate-700">
+                    ⏱️ Aberto há:
+                </span>
+
+                <span className="font-bold text-blue-600">
+
+                    <TempoOperacao
+                        inicio={solicitacao.recebida_em}
+                        aoVivo={true}
+                    />
+
+                </span>
+
+            </div>
+
+
             <div className="mt-5 space-y-2 text-sm">
 
                 <div>
@@ -75,6 +172,7 @@ export default function LocalizaCard({
 
                 </div>
 
+
                 <div>
 
                     <strong>Fornecedor:</strong>
@@ -84,6 +182,7 @@ export default function LocalizaCard({
                     {solicitacao.fornecedor}
 
                 </div>
+
 
                 <div>
 
@@ -95,7 +194,23 @@ export default function LocalizaCard({
 
                 </div>
 
+
+                <div>
+
+                    <strong>Aberto há:</strong>
+
+                    {" "}
+
+                    <span className="font-semibold text-orange-600">
+
+                        {tempoDecorrido}
+
+                    </span>
+
+                </div>
+
             </div>
+
 
             <button
 

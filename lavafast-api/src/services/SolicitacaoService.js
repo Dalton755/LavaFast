@@ -9,9 +9,16 @@ import {
 
 import SolicitacaoRepository from '../repositories/SolicitacaoRepository.js';
 import {
-    LOJAS,
-    obterTipoLavagem
+    LOJAS
 } from './localiza/maps.js';
+
+import {
+    obterTipoLavagemPorValor
+} from '../repositories/TipoLavagemRepository.js';
+
+import {
+    obterTipoLavagemPorId
+} from '../repositories/TipoLavagemRepository.js';
 
 import STATUS from '../constants/status.js';
 import WorkflowService from './WorkflowService.js';
@@ -159,23 +166,61 @@ class SolicitacaoService {
         const particulares =
             await LavagemParticularRepository.listarConcluidas();
 
+        const localizaComTipo = await Promise.all(
+
+            localiza.map(async item => {
+
+                const tipo =
+                    await obterTipoLavagemPorId(
+                        item.tipo_lavagem_id
+                    );
+
+                return {
+
+                    ...item,
+
+                    origem: "LOCALIZA",
+
+                    tipo_lavagem: tipo?.nome ?? "-",
+
+                    tipo_lavagem_cor: tipo?.cor ?? null
+
+                };
+
+            })
+
+        );
+
+        const particularesComTipo = await Promise.all(
+
+            particulares.map(async item => {
+
+                const tipo =
+                    await obterTipoLavagemPorId(
+                        item.tipo_lavagem_id
+                    );
+
+                return {
+
+                    ...item,
+
+                    origem: "PARTICULAR",
+
+                    tipo_lavagem: tipo?.nome ?? "-",
+
+                    tipo_lavagem_cor: tipo?.cor ?? null
+
+                };
+
+            })
+
+        );
+
         const resultado = [
 
-            ...localiza.map(item => ({
+            ...localizaComTipo,
 
-                ...item,
-
-                origem: "LOCALIZA"
-
-            })),
-
-            ...particulares.map(item => ({
-
-                ...item,
-
-                origem: "PARTICULAR"
-
-            }))
+            ...particularesComTipo
 
         ];
 
@@ -293,11 +338,15 @@ class SolicitacaoService {
 
                         tipo_lavagem_id:
 
-                            obterTipoLavagem(
-
-                                veiculo.valor
-
-                            ),
+                            (
+                                await obterTipoLavagemPorValor(
+                                    Number(
+                                        veiculo.valor
+                                            .replace(".", "")
+                                            .replace(",", ".")
+                                    )
+                                )
+                            ).id,
 
                         origem:
 
