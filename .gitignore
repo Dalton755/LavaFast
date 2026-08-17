@@ -4,3 +4,4 @@ node_modules/
 dist/
 lavafast-web/.env
 lavafast-api/.env
+.vscode/
