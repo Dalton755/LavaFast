@@ -4,7 +4,7 @@ import GmailLabelService from "./services/gmail/GmailLabelService.js";
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, async () => {
+app.listen(PORT, "0.0.0.0", async () => {
 
     console.log("");
     console.log("===================================");
