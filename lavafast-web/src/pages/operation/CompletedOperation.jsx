@@ -1697,22 +1697,22 @@ export default function CompletedOperation({
 
                                         </div>
 
-                                        {item.loja && (
+                                        {obterNomeLoja(item) && (
 
                                             <div className="
-                                                flex
-                                                items-center
-                                                gap-1
-                                                text-sm
-                                                text-slate-500
-                                                mt-1
-                                            ">
+                                                    flex
+                                                    items-center
+                                                    gap-1
+                                                    text-sm
+                                                    text-slate-500
+                                                    mt-1
+                                                ">
 
                                                 <Store
                                                     size={14}
                                                 />
 
-                                                {item.loja}
+                                                {obterNomeLoja(item)}
 
                                             </div>
 
