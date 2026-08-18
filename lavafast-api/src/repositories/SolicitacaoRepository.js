@@ -94,15 +94,22 @@ class SolicitacaoRepository {
     async listarConcluidas() {
 
         const {
-
             data,
-
             error
-
         } = await supabase
             .schema("operacoes")
             .from("solicitacoes_lavagem")
-            .select("*")
+            .select(`
+            *,
+            loja:lojas (
+                id,
+                codigo,
+                nome,
+                cidade,
+                estado
+                
+            )
+        `)
             .eq("status", "FINALIZADA")
             .order("finalizada_em", {
                 ascending: false

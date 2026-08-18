@@ -17,6 +17,26 @@ import {
     Store
 } from "lucide-react";
 
+function obterNomeLoja(item) {
+
+    if (!item) return "";
+
+    if (typeof item.loja === "string") {
+        return item.loja;
+    }
+
+    if (item.loja?.nome) {
+        return item.loja.nome;
+    }
+
+    if (item.loja?.codigo) {
+        return item.loja.codigo;
+    }
+
+    return "";
+
+}
+
 export default function CompletedOperation({
     voltar
 }) {
@@ -192,8 +212,8 @@ export default function CompletedOperation({
     const lojasDisponiveis = useMemo(() => {
 
         const lojas = concluidas
-            .map(item => item.loja)
-            .filter(Boolean);
+            .map(item => obterNomeLoja(item))
+            .filter(Boolean)
 
         return [
             ...new Set(lojas)
@@ -270,7 +290,7 @@ export default function CompletedOperation({
 
                 if (
                     String(
-                        item.loja || ""
+                        obterNomeLoja(item)
                     ) !== loja
                 ) {
                     return false;
@@ -417,7 +437,7 @@ export default function CompletedOperation({
                 item.origem || "",
 
             "Loja":
-                item.loja || "",
+                obterNomeLoja(item),
 
             "Tipo de lavagem":
                 item.tipo_lavagem || "",
@@ -656,7 +676,7 @@ export default function CompletedOperation({
 
                 item.origem || "-",
 
-                item.loja || "-",
+                obterNomeLoja(item) || "-",
 
                 item.tipo_lavagem || "-",
 
@@ -1647,10 +1667,9 @@ export default function CompletedOperation({
                                                 py-1
                                                 rounded-full
 
-                                                ${
-                                                    item.origem === "LOCALIZA"
-                                                        ? "bg-green-100 text-green-700"
-                                                        : "bg-blue-100 text-blue-700"
+                                                ${item.origem === "LOCALIZA"
+                                                    ? "bg-green-100 text-green-700"
+                                                    : "bg-blue-100 text-blue-700"
                                                 }
                                             `}>
 
