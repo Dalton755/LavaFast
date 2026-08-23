@@ -4,6 +4,7 @@ import supabase from './config/supabase.js';
 import localizaRoutes from './routes/localiza.js';
 import solicitacoesRoutes from './routes/solicitacoes.js';
 import funcionariosRoutes from "./routes/funcionarios.js";
+import authRoutes from "./routes/auth.js";
 import lojasRoutes from './routes/lojas.js';
 import lavagensParticularesRoutes from './routes/lavagensParticulares.js';
 import { iniciarSchedulers } from './scheduler/index.js';
@@ -18,6 +19,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/solicitacoes', solicitacoesRoutes);
 app.use("/api/funcionarios", funcionariosRoutes);
+app.use("/api/auth", authRoutes);
 app.use(
     "/api/solicitacoes/manual",
     solicitacaoManualRoutes
