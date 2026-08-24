@@ -8,6 +8,16 @@ import {
 
 const router = Router();
 
+router.post(
+    "/verificar-cpf",
+    AuthController.verificarCpf
+);
+
+router.post(
+    "/cadastrar-senha",
+    AuthController.cadastrarSenha
+);
+
 router.get(
     "/me",
     autenticar,

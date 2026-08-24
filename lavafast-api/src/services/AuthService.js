@@ -7,6 +7,143 @@ const CARGOS_FINANCEIROS = [
 
 class AuthService {
 
+    async verificarCpf(cpf) {
+
+        if (!cpf) {
+
+            throw new Error(
+                "CPF não informado."
+            );
+
+        }
+
+        const funcionario =
+            await AuthRepository.buscarFuncionarioPorCpf(
+                cpf
+            );
+
+        if (!funcionario) {
+
+            return {
+                encontrado: false
+            };
+
+        }
+
+        if (funcionario.status !== "Ativo") {
+
+            throw new Error(
+                "Funcionário inativo."
+            );
+
+        }
+
+        return {
+
+            encontrado: true,
+
+            nome:
+                funcionario.nome,
+
+            cpf:
+                funcionario.cpf,
+
+            email:
+                funcionario.email,
+
+            cargo:
+                funcionario.cargo,
+
+            possuiEmail:
+                Boolean(
+                    funcionario.email
+                )
+
+        };
+
+    }
+
+    async cadastrarSenha(cpf, senha) {
+
+        if (!cpf) {
+
+            throw new Error(
+                "CPF não informado."
+            );
+
+        }
+
+        if (!senha) {
+
+            throw new Error(
+                "Senha não informada."
+            );
+
+        }
+
+        if (senha.length < 6) {
+
+            throw new Error(
+                "A senha deve possuir pelo menos 6 caracteres."
+            );
+
+        }
+
+        const funcionario =
+            await AuthRepository.buscarFuncionarioPorCpf(
+                cpf
+            );
+
+        if (!funcionario) {
+
+            throw new Error(
+                "CPF não encontrado."
+            );
+
+        }
+
+        if (funcionario.status !== "Ativo") {
+
+            throw new Error(
+                "Funcionário inativo."
+            );
+
+        }
+
+        if (!funcionario.email) {
+
+            throw new Error(
+                "Funcionário sem e-mail cadastrado."
+            );
+
+        }
+
+        const usuarioAuth =
+            await AuthRepository.criarOuAtualizarUsuarioAuth(
+                funcionario.email,
+                senha
+            );
+
+        return {
+
+            sucesso: true,
+
+            nome:
+                funcionario.nome,
+
+            cpf:
+                funcionario.cpf,
+
+            email:
+                funcionario.email,
+
+            usuario_auth_id:
+                usuarioAuth.id
+
+        };
+
+    }
+
     async obterPerfil(usuario) {
 
         if (!usuario?.email) {
