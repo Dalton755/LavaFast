@@ -7,6 +7,7 @@ import App from './App.jsx';
 import { Toaster } from "react-hot-toast";
 
 import { LojaProvider } from './context/LojaContext.jsx';
+import { AuthProvider } from './context/AuthContext.jsx';
 
 createRoot(document.getElementById('root')).render(
     <StrictMode>
@@ -33,7 +34,15 @@ createRoot(document.getElementById('root')).render(
 
         />
 
-        <App />
+        <AuthProvider>
+
+            <LojaProvider>
+
+                <App />
+
+            </LojaProvider>
+
+        </AuthProvider>
 
     </StrictMode>
 );

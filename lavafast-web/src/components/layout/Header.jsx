@@ -1,12 +1,16 @@
 import { Building2, User } from 'lucide-react';
 import BRAND from "../../config/branding";
 import { useLoja } from "../../context/LojaContext";
+import { useAuth } from "../../context/AuthContext";
 import { useState } from "react";
 import FiltroLojas from "../common/FiltroLojas";
 
 export default function Header() {
 
+    const { usuario, logout } = useAuth();
+
     const [abrirFiltro, setAbrirFiltro] = useState(false);
+    const [abrirUsuario, setAbrirUsuario] = useState(false);
 
     const {
 
@@ -162,32 +166,139 @@ export default function Header() {
 
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="relative">
 
-                    <div
+                    <button
+                        onClick={() =>
+                            setAbrirUsuario(valor => !valor)
+                        }
                         className="
-                        w-11
-                        h-11
-                        rounded-full
-                        bg-gradient-to-br
-                        from-slate-100
-                        to-slate-200
-                        flex
-                        items-center
-                        justify-center
-                        shadow-sm
-                        "
+            flex
+            items-center
+            gap-3
+            px-3
+            py-2
+            rounded-2xl
+            hover:bg-slate-50
+            transition
+        "
                     >
 
-                        <User size={18} />
+                        <div
+                            className="
+                w-11
+                h-11
+                rounded-full
+                bg-gradient-to-br
+                from-slate-100
+                to-slate-200
+                flex
+                items-center
+                justify-center
+                shadow-sm
+            "
+                        >
 
-                    </div>
+                            <User size={18} />
 
-                    <span className="text-sm font-medium">
+                        </div>
 
-                        Dalton
+                        <span className="text-sm font-medium">
 
-                    </span>
+                            {usuario?.nome || "Usuário"}
+
+                        </span>
+
+                    </button>
+
+                    {abrirUsuario && (
+
+                        <div
+                            className="
+                absolute
+                right-0
+                top-14
+                w-64
+                bg-white
+                border
+                border-slate-200
+                rounded-2xl
+                shadow-xl
+                p-2
+                z-[9999]
+            "
+                        >
+
+                            <div className="px-3 py-3">
+
+                                <p className="
+                    text-sm
+                    font-semibold
+                    text-slate-800
+                ">
+
+                                    {usuario?.nome || "Usuário"}
+
+                                </p>
+
+                                <p className="
+                    text-xs
+                    text-slate-500
+                    mt-1
+                    truncate
+                ">
+
+                                    {usuario?.email || ""}
+
+                                </p>
+
+                                <p className="
+                    text-xs
+                    text-slate-400
+                    mt-1
+                ">
+
+                                    {usuario?.cargo || ""}
+
+                                </p>
+
+                            </div>
+
+                            <div className="
+                border-t
+                border-slate-100
+                my-1
+            " />
+
+                            <button
+                                onClick={async () => {
+
+                                    setAbrirUsuario(false);
+
+                                    await logout();
+
+                                }}
+                                className="
+                    w-full
+                    text-left
+                    px-3
+                    py-2.5
+                    rounded-xl
+                    text-sm
+                    font-semibold
+                    text-red-600
+                    hover:bg-red-50
+                    transition
+                "
+                            >
+
+                                Sair
+
+                            </button>
+
+                        </div>
+
+                    )}
 
                 </div>
 

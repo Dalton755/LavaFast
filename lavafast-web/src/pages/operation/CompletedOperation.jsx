@@ -38,7 +38,8 @@ function obterNomeLoja(item) {
 }
 
 export default function CompletedOperation({
-    voltar
+    voltar,
+    usuario
 }) {
 
     const {
@@ -418,6 +419,16 @@ export default function CompletedOperation({
      */
     function exportarExcel() {
 
+        if (!usuario?.podeExportar) {
+
+            alert(
+                "Seu perfil não possui permissão para exportar relatórios."
+            );
+
+            return;
+
+        }
+
         if (resultados.length === 0) {
             alert(
                 "Não existem registros para exportar."
@@ -569,6 +580,16 @@ export default function CompletedOperation({
      * Usa SOMENTE os registros atualmente filtrados.
      */
     function exportarPDF() {
+
+        if (!usuario?.podeExportar) {
+
+            alert(
+                "Seu perfil não possui permissão para exportar relatórios."
+            );
+
+            return;
+
+        }
 
         if (resultados.length === 0) {
             alert(
@@ -1314,11 +1335,7 @@ export default function CompletedOperation({
                     border-slate-100
                 ">
 
-                    <div className="
-                        flex
-                        items-center
-                        justify-between
-                    ">
+                    {usuario?.podeVerValores && (
 
                         <div>
 
@@ -1336,7 +1353,7 @@ export default function CompletedOperation({
                             <p className="
                                 text-2xl
                                 font-black
-                                text-green-600
+                                text-slate-800
                                 mt-1
                             ">
 
@@ -1348,24 +1365,7 @@ export default function CompletedOperation({
 
                         </div>
 
-                        <div className="
-                            w-11
-                            h-11
-                            rounded-xl
-                            bg-green-100
-                            text-green-600
-                            flex
-                            items-center
-                            justify-center
-                        ">
-
-                            <DollarSign
-                                size={22}
-                            />
-
-                        </div>
-
-                    </div>
+                    )}
 
                 </div>
 
@@ -1433,9 +1433,13 @@ export default function CompletedOperation({
 
             </div>
 
+
+
             {/* EXPORTAÇÃO */}
 
-            <div className="
+            {usuario?.podeExportar && (
+
+                <div className="
                 bg-white
                 rounded-2xl
                 shadow
@@ -1449,41 +1453,43 @@ export default function CompletedOperation({
                 gap-4
             ">
 
-                <div>
+                    <div>
 
-                    <h2 className="
+                        <h2 className="
                         font-bold
                         text-slate-800
                     ">
 
-                        Relatório
+                            Relatório
 
-                    </h2>
+                        </h2>
 
-                    <p className="
+                        <p className="
                         text-sm
                         text-slate-500
                         mt-1
                     ">
 
-                        A exportação respeita os filtros aplicados.
+                            A exportação respeita os filtros aplicados.
 
-                    </p>
+                        </p>
 
-                </div>
+                    </div>
 
-                <div className="
-                    flex
-                    flex-wrap
-                    gap-3
-                ">
+                    
 
-                    <button
-                        onClick={exportarExcel}
-                        disabled={
-                            resultados.length === 0
-                        }
-                        className="
+                        <div className="
+                        flex
+                        flex-wrap
+                        gap-3
+                    ">
+
+                            <button
+                                onClick={exportarExcel}
+                                disabled={
+                                    resultados.length === 0
+                                }
+                                className="
                             flex
                             items-center
                             gap-2
@@ -1499,22 +1505,22 @@ export default function CompletedOperation({
                             text-sm
                             transition
                         "
-                    >
+                            >
 
-                        <FileSpreadsheet
-                            size={18}
-                        />
+                                <FileSpreadsheet
+                                    size={18}
+                                />
 
-                        Exportar Excel
+                                Exportar Excel
 
-                    </button>
+                            </button>
 
-                    <button
-                        onClick={exportarPDF}
-                        disabled={
-                            resultados.length === 0
-                        }
-                        className="
+                            <button
+                                onClick={exportarPDF}
+                                disabled={
+                                    resultados.length === 0
+                                }
+                                className="
                             flex
                             items-center
                             gap-2
@@ -1530,19 +1536,23 @@ export default function CompletedOperation({
                             text-sm
                             transition
                         "
-                    >
+                            >
 
-                        <FileText
-                            size={18}
-                        />
+                                <FileText
+                                    size={18}
+                                />
 
-                        Exportar PDF
+                                Exportar PDF
 
-                    </button>
+                            </button>
+
+                        </div>
+
+                    
 
                 </div>
 
-            </div>
+            )}
 
             {/* RESULTADOS */}
 
@@ -1743,9 +1753,10 @@ export default function CompletedOperation({
                                             mt-2
                                         ">
 
-                                            {formatarValor(
-                                                item.valor
-                                            )}
+                                            {usuario?.podeVerValores
+                                                ? formatarValor(item.valor)
+                                                : "—"
+                                            }
 
                                         </div>
 
