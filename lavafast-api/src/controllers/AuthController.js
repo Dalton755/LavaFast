@@ -30,19 +30,21 @@ class AuthController {
 
     }
 
-        async cadastrarSenha(req, res) {
+    async cadastrarSenha(req, res) {
 
         try {
 
             const {
                 cpf,
-                senha
+                senha,
+                email
             } = req.body;
 
             const resultado =
                 await AuthService.cadastrarSenha(
                     cpf,
-                    senha
+                    senha,
+                    email
                 );
 
             return res.json(resultado);

@@ -58,6 +58,70 @@ class AuthRepository {
 
     }
 
+        async atualizarEmailFuncionario(
+        id,
+        email
+    ) {
+
+        const {
+            data,
+            error
+        } = await supabase
+            .schema("financeiro")
+            .from("funcionarios")
+            .update({
+                email
+            })
+            .eq("id", id)
+            .select(`
+                id,
+                nome,
+                cpf,
+                email,
+                cargo,
+                loja,
+                status,
+                loja_padrao_id
+            `)
+            .single();
+
+        if (error) {
+
+            throw error;
+
+        }
+
+        return data;
+
+    }
+
+    async verificarUsuarioAuthPorEmail(email) {
+
+        const {
+            data: usuarios,
+            error
+        } = await supabase.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000
+        });
+
+        if (error) {
+
+            throw error;
+
+        }
+
+        const usuarioExistente =
+            usuarios.users.find(
+                usuario =>
+                    usuario.email?.toLowerCase() ===
+                    email.toLowerCase()
+            );
+
+        return usuarioExistente || null;
+
+    }
+
     async criarOuAtualizarUsuarioAuth(
         email,
         senha

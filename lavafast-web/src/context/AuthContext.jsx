@@ -60,11 +60,16 @@ export function AuthProvider({ children }) {
 
     async function login(email, senha) {
 
-        const { data, error } =
-            await supabase.auth.signInWithPassword({
-                email,
-                password: senha
-            });
+        const {
+            data,
+            error
+        } = await supabase.auth.signInWithPassword({
+
+            email,
+
+            password: senha
+
+        });
 
         if (error) {
 
@@ -75,6 +80,58 @@ export function AuthProvider({ children }) {
         setSession(data.session);
 
         await carregarPerfil(data.session);
+
+    }
+
+    async function verificarCpf(cpf) {
+
+        const { data, error } =
+            await api.post(
+                "/auth/verificar-cpf",
+                {
+                    cpf
+                }
+            );
+
+        if (error) {
+
+            throw new Error(
+                error.response?.data?.erro ||
+                "Não foi possível verificar o CPF."
+            );
+
+        }
+
+        return data;
+
+    }
+
+    async function cadastrarSenha(
+        cpf,
+        senha,
+        email
+    ) {
+
+        const { data, error } =
+            await api.post(
+                "/auth/cadastrar-senha",
+                {
+                    cpf,
+                    senha,
+                    email
+                }
+            );
+
+        if (error) {
+
+            throw new Error(
+                error.response?.data?.erro ||
+                "Não foi possível criar a senha."
+            );
+
+        }
+
+        return data;
 
     }
 
@@ -160,6 +217,8 @@ export function AuthProvider({ children }) {
                 usuario,
                 loading,
                 login,
+                verificarCpf,
+                cadastrarSenha,
                 logout
             }}
         >

@@ -38,6 +38,20 @@ class AuthService {
 
         }
 
+        let possuiAuth = false;
+
+        if (funcionario.email) {
+
+            const usuarioAuth =
+                await AuthRepository.verificarUsuarioAuthPorEmail(
+                    funcionario.email
+                );
+
+            possuiAuth =
+                Boolean(usuarioAuth);
+
+        }
+
         return {
 
             encontrado: true,
@@ -57,13 +71,19 @@ class AuthService {
             possuiEmail:
                 Boolean(
                     funcionario.email
-                )
+                ),
+
+            possuiAuth
 
         };
 
     }
 
-    async cadastrarSenha(cpf, senha) {
+    async cadastrarSenha(
+        cpf,
+        senha,
+        email
+    ) {
 
         if (!cpf) {
 
@@ -89,10 +109,10 @@ class AuthService {
 
         }
 
-        const funcionario =
-            await AuthRepository.buscarFuncionarioPorCpf(
-                cpf
-            );
+        let funcionario =
+    await AuthRepository.buscarFuncionarioPorCpf(
+        cpf
+    );
 
         if (!funcionario) {
 
@@ -112,9 +132,36 @@ class AuthService {
 
         if (!funcionario.email) {
 
-            throw new Error(
-                "Funcionário sem e-mail cadastrado."
-            );
+            if (!email) {
+
+                throw new Error(
+                    "E-mail não informado."
+                );
+
+            }
+
+            email =
+                email
+                    .trim()
+                    .toLowerCase();
+
+            const emailValido =
+                /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+                    .test(email);
+
+            if (!emailValido) {
+
+                throw new Error(
+                    "Informe um e-mail válido."
+                );
+
+            }
+
+            funcionario =
+                await AuthRepository.atualizarEmailFuncionario(
+                    funcionario.id,
+                    email
+                );
 
         }
 
