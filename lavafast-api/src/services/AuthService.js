@@ -110,9 +110,9 @@ class AuthService {
         }
 
         let funcionario =
-    await AuthRepository.buscarFuncionarioPorCpf(
-        cpf
-    );
+            await AuthRepository.buscarFuncionarioPorCpf(
+                cpf
+            );
 
         if (!funcionario) {
 
@@ -153,6 +153,22 @@ class AuthService {
 
                 throw new Error(
                     "Informe um e-mail válido."
+                );
+
+            }
+
+            const funcionarioComEmail =
+                await AuthRepository.buscarFuncionarioPorEmail(
+                    email
+                );
+
+            if (
+                funcionarioComEmail &&
+                funcionarioComEmail.id !== funcionario.id
+            ) {
+
+                throw new Error(
+                    "Este e-mail já está cadastrado para outro funcionário."
                 );
 
             }

@@ -360,7 +360,8 @@ export default function Login() {
             const resultado =
                 await cadastrarSenha(
                     obterCpfFormatado(),
-                    senha
+                    senha,
+                    email
                 );
 
             setSenha("");
