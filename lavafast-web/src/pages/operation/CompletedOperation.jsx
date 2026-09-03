@@ -1,9 +1,15 @@
 import MainLayout from "../../layouts/MainLayout";
 import useSolicitacoesConcluidas from "../../hooks/useSolicitacoesConcluidas";
-import { useMemo, useState } from "react";
-import * as XLSX from "xlsx";
-import { jsPDF } from "jspdf";
-import { autoTable } from "jspdf-autotable";
+import {
+    listarSolicitacoesConcluidasExportacao,
+    obterResumoSolicitacoesConcluidas
+} from "../../api/solicitacoes";
+import {
+    useEffect,
+    useMemo,
+    useState
+} from "react";
+
 import {
     ArrowLeft,
     Search,
@@ -42,17 +48,30 @@ export default function CompletedOperation({
     usuario
 }) {
 
-    const {
-        concluidas,
-        loading
-    } = useSolicitacoesConcluidas();
-
     const [placa, setPlaca] = useState("");
     const [dataInicial, setDataInicial] = useState("");
     const [dataFinal, setDataFinal] = useState("");
     const [tipoLavagem, setTipoLavagem] = useState("");
     const [loja, setLoja] = useState("");
     const [origem, setOrigem] = useState("");
+
+    const {
+        concluidas,
+        loading,
+        pagina,
+        total,
+        totalPaginas,
+        proximaPagina,
+        paginaAnterior
+    } = useSolicitacoesConcluidas({
+        placa,
+        dataInicial,
+        dataFinal,
+        tipoLavagem,
+        loja,
+        origem
+    });
+
 
     /*
      * Converte data para YYYY-MM-DD
@@ -240,129 +259,21 @@ export default function CompletedOperation({
     /*
      * Aplica todos os filtros.
      */
-    const resultados = useMemo(() => {
+    const resultados =
+        concluidas;
 
-        const termoPlaca =
-            placa
-                .trim()
-                .toUpperCase();
+    async function carregarRelatorioCompleto() {
 
-        return concluidas.filter(item => {
-
-            /*
-             * PLACA
-             */
-            if (termoPlaca) {
-
-                const placaItem =
-                    String(
-                        item.placa || ""
-                    ).toUpperCase();
-
-                if (
-                    !placaItem.includes(
-                        termoPlaca
-                    )
-                ) {
-                    return false;
-                }
-
-            }
-
-            /*
-             * TIPO
-             */
-            if (tipoLavagem) {
-
-                if (
-                    String(
-                        item.tipo_lavagem || ""
-                    ) !== tipoLavagem
-                ) {
-                    return false;
-                }
-
-            }
-
-            /*
-             * LOJA
-             */
-            if (loja) {
-
-                if (
-                    String(
-                        obterNomeLoja(item)
-                    ) !== loja
-                ) {
-                    return false;
-                }
-
-            }
-
-            /*
-             * ORIGEM
-             */
-            if (origem) {
-
-                if (
-                    String(
-                        item.origem || ""
-                    ) !== origem
-                ) {
-                    return false;
-                }
-
-            }
-
-            /*
-             * DATA INICIAL
-             */
-            if (dataInicial) {
-
-                const dataItem =
-                    obterDataLocal(
-                        item.finalizada_em
-                    );
-
-                if (
-                    dataItem < dataInicial
-                ) {
-                    return false;
-                }
-
-            }
-
-            /*
-             * DATA FINAL
-             */
-            if (dataFinal) {
-
-                const dataItem =
-                    obterDataLocal(
-                        item.finalizada_em
-                    );
-
-                if (
-                    dataItem > dataFinal
-                ) {
-                    return false;
-                }
-
-            }
-
-            return true;
-
-        });
-
-    }, [
-        concluidas,
-        placa,
-        dataInicial,
-        dataFinal,
-        tipoLavagem,
-        loja,
-        origem
-    ]);
+        return await
+            listarSolicitacoesConcluidasExportacao({
+                placa,
+                dataInicial,
+                dataFinal,
+                tipoLavagem,
+                loja,
+                origem
+            });
+    }
 
     /*
      * Quantidade total.
@@ -370,20 +281,75 @@ export default function CompletedOperation({
     const quantidadeTotal =
         resultados.length;
 
+
+
     /*
      * Valor total dos registros filtrados.
      */
-    const valorTotal = useMemo(() => {
+    const [valorTotal, setValorTotal] =
+        useState(0);
 
-        return resultados.reduce(
-            (total, item) =>
-                total + (
-                    Number(item.valor) || 0
-                ),
-            0
-        );
+    useEffect(() => {
 
-    }, [resultados]);
+        let ativo = true;
+
+        const timer =
+            setTimeout(
+                async () => {
+
+                    try {
+
+                        const resumo =
+                            await obterResumoSolicitacoesConcluidas({
+                                placa,
+                                dataInicial,
+                                dataFinal,
+                                tipoLavagem,
+                                loja,
+                                origem
+                            });
+
+                        if (!ativo) {
+                            return;
+                        }
+
+                        setValorTotal(
+                            Number(
+                                resumo?.valorTotal
+                            ) || 0
+                        );
+
+                    }
+
+                    catch (erro) {
+
+                        console.error(
+                            "Erro ao carregar resumo:",
+                            erro
+                        );
+
+                    }
+
+                },
+                300
+            );
+
+        return () => {
+
+            ativo = false;
+
+            clearTimeout(timer);
+
+        };
+
+    }, [
+        placa,
+        dataInicial,
+        dataFinal,
+        tipoLavagem,
+        loja,
+        origem
+    ]);
 
     /*
      * Verifica se existe algum filtro ativo.
@@ -417,7 +383,8 @@ export default function CompletedOperation({
      *
      * Usa SOMENTE os registros atualmente filtrados.
      */
-    function exportarExcel() {
+    async function exportarExcel() {
+
 
         if (!usuario?.podeExportar) {
 
@@ -429,14 +396,27 @@ export default function CompletedOperation({
 
         }
 
-        if (resultados.length === 0) {
+        const relatorio =
+            await carregarRelatorioCompleto();
+
+        const dadosExportacao =
+            Array.isArray(relatorio?.dados)
+                ? relatorio.dados
+                : [];
+
+
+
+        if (dadosExportacao.length === 0) {
             alert(
                 "Não existem registros para exportar."
             );
             return;
         }
 
-        const dados = resultados.map(item => ({
+        const XLSX =
+            await import("xlsx");
+
+        const dados = dadosExportacao.map(item => ({
 
             "Placa":
                 item.placa || "",
@@ -494,7 +474,7 @@ export default function CompletedOperation({
                 "TOTAL",
 
             "Solicitação":
-                quantidadeTotal,
+                relatorio.quantidade,
 
             "Origem":
                 "",
@@ -506,7 +486,7 @@ export default function CompletedOperation({
                 "",
 
             "Valor":
-                valorTotal,
+                relatorio.valorTotal,
 
             "Fornecedor":
                 "",
@@ -579,7 +559,7 @@ export default function CompletedOperation({
      *
      * Usa SOMENTE os registros atualmente filtrados.
      */
-    function exportarPDF() {
+    async function exportarPDF() {
 
         if (!usuario?.podeExportar) {
 
@@ -591,12 +571,30 @@ export default function CompletedOperation({
 
         }
 
-        if (resultados.length === 0) {
+        const relatorio =
+            await carregarRelatorioCompleto();
+
+        const dadosExportacao =
+            Array.isArray(relatorio?.dados)
+                ? relatorio.dados
+                : [];
+
+        if (dadosExportacao.length === 0) {
             alert(
                 "Não existem registros para exportar."
             );
             return;
         }
+
+        const {
+            jsPDF
+        } = await import("jspdf");
+
+        const {
+            autoTable
+        } = await import(
+            "jspdf-autotable"
+        );
 
         const doc =
             new jsPDF({
@@ -635,14 +633,14 @@ export default function CompletedOperation({
         doc.setFontSize(10);
 
         doc.text(
-            `Lavagens: ${quantidadeTotal}`,
+            `Lavagens: ${relatorio.quantidade}`,
             14,
             29
         );
 
         doc.text(
             `Valor total: ${formatarValor(
-                valorTotal
+                relatorio.valorTotal
             )}`,
             65,
             29
@@ -689,7 +687,7 @@ export default function CompletedOperation({
          * Tabela.
          */
         const linhas =
-            resultados.map(item => [
+            dadosExportacao.map(item => [
 
                 item.placa || "-",
 
@@ -1301,7 +1299,7 @@ export default function CompletedOperation({
                                 mt-1
                             ">
 
-                                {quantidadeTotal}
+                                {total}
 
                             </p>
 
@@ -1404,7 +1402,7 @@ export default function CompletedOperation({
                                 mt-1
                             ">
 
-                                {concluidas.length}
+                                {total}
 
                             </p>
 
@@ -1476,20 +1474,20 @@ export default function CompletedOperation({
 
                     </div>
 
-                    
 
-                        <div className="
+
+                    <div className="
                         flex
                         flex-wrap
                         gap-3
                     ">
 
-                            <button
-                                onClick={exportarExcel}
-                                disabled={
-                                    resultados.length === 0
-                                }
-                                className="
+                        <button
+                            onClick={exportarExcel}
+                            disabled={
+                                resultados.length === 0
+                            }
+                            className="
                             flex
                             items-center
                             gap-2
@@ -1505,22 +1503,22 @@ export default function CompletedOperation({
                             text-sm
                             transition
                         "
-                            >
+                        >
 
-                                <FileSpreadsheet
-                                    size={18}
-                                />
+                            <FileSpreadsheet
+                                size={18}
+                            />
 
-                                Exportar Excel
+                            Exportar Excel
 
-                            </button>
+                        </button>
 
-                            <button
-                                onClick={exportarPDF}
-                                disabled={
-                                    resultados.length === 0
-                                }
-                                className="
+                        <button
+                            onClick={exportarPDF}
+                            disabled={
+                                resultados.length === 0
+                            }
+                            className="
                             flex
                             items-center
                             gap-2
@@ -1536,19 +1534,19 @@ export default function CompletedOperation({
                             text-sm
                             transition
                         "
-                            >
+                        >
 
-                                <FileText
-                                    size={18}
-                                />
+                            <FileText
+                                size={18}
+                            />
 
-                                Exportar PDF
+                            Exportar PDF
 
-                            </button>
+                        </button>
 
-                        </div>
+                    </div>
 
-                    
+
 
                 </div>
 
@@ -1908,6 +1906,122 @@ export default function CompletedOperation({
                             </div>
 
                         ))}
+
+                    </div>
+
+
+
+                )}
+
+                {totalPaginas > 1 && (
+
+                    <div className="
+                        mt-8
+                        flex
+                        flex-col
+                        sm:flex-row
+                        sm:items-center
+                        sm:justify-between
+                        gap-4
+                        border-t
+                        border-slate-100
+                        pt-5
+                    ">
+
+                        <div className="
+                            text-sm
+                            text-slate-500
+                        ">
+
+                            Página{" "}
+
+                            <strong>
+                                {pagina}
+                            </strong>
+
+                            {" "}de{" "}
+
+                            <strong>
+                                {totalPaginas}
+                            </strong>
+
+                            {" "}—{" "}
+
+                            <strong>
+                                {total}
+                            </strong>
+
+                            {" "}lavagens concluídas
+
+                        </div>
+
+                        <div className="
+                            flex
+                            items-center
+                            gap-2
+                        ">
+
+                            <button
+                                type="button"
+                                disabled={pagina <= 1}
+                                onClick={paginaAnterior}
+                                className="
+                                    px-4
+                                    py-2
+                                    rounded-xl
+                                    border
+                                    border-slate-200
+                                    bg-white
+                                    text-sm
+                                    font-semibold
+                                    text-slate-700
+                                    disabled:opacity-40
+                                    disabled:cursor-not-allowed
+                                    hover:bg-slate-50
+                                "
+                            >
+                                Anterior
+                            </button>
+
+                            <span className="
+                                px-3
+                                text-sm
+                                font-semibold
+                                text-slate-600
+                            ">
+
+                                Página{" "}
+                                {pagina}
+                                {" "}de{" "}
+                                {totalPaginas}
+
+                            </span>
+
+                            <button
+                                type="button"
+                                disabled={
+                                    pagina >= totalPaginas
+                                }
+                                onClick={proximaPagina}
+                                className="
+                                    px-4
+                                    py-2
+                                    rounded-xl
+                                    border
+                                    border-slate-200
+                                    bg-white
+                                    text-sm
+                                    font-semibold
+                                    text-slate-700
+                                    disabled:opacity-40
+                                    disabled:cursor-not-allowed
+                                    hover:bg-slate-50
+                                "
+                            >
+                                Próxima
+                            </button>
+
+                        </div>
 
                     </div>
 

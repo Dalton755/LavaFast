@@ -5,3 +5,4 @@ dist/
 lavafast-web/.env
 lavafast-api/.env
 .vscode/
+*.zip

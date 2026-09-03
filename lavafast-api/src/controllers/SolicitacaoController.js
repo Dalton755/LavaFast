@@ -34,10 +34,35 @@ class SolicitacaoController {
 
         try {
 
-            const dados =
-                await SolicitacaoService.listarConcluidas();
+            const {
+                pagina = 1,
+                limite = 50,
+                placa = "",
+                dataInicial = "",
+                dataFinal = "",
+                tipoLavagem = "",
+                loja = "",
+                origem = ""
+            } = req.query;
 
-            return res.json(dados);
+            const resultado =
+                await SolicitacaoService
+                    .listarConcluidas(
+                        pagina,
+                        limite,
+                        {
+                            placa,
+                            dataInicial,
+                            dataFinal,
+                            tipoLavagem,
+                            loja,
+                            origem
+                        }
+                    );
+
+            return res.json(
+                resultado
+            );
 
         }
 
@@ -53,6 +78,88 @@ class SolicitacaoController {
 
         }
 
+    }
+
+    async exportarConcluidas(req, res) {
+
+        try {
+
+            const {
+                placa = "",
+                dataInicial = "",
+                dataFinal = "",
+                tipoLavagem = "",
+                loja = "",
+                origem = ""
+            } = req.query;
+
+            const resultado =
+                await SolicitacaoService
+                    .listarConcluidasExportacao({
+                        placa,
+                        dataInicial,
+                        dataFinal,
+                        tipoLavagem,
+                        loja,
+                        origem
+                    });
+
+            return res.json(
+                resultado
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            return res.status(500).json({
+                erro: error.message
+            });
+
+        }
+    }
+
+    async resumoConcluidas(req, res) {
+
+        try {
+
+            const {
+                placa = "",
+                dataInicial = "",
+                dataFinal = "",
+                tipoLavagem = "",
+                loja = "",
+                origem = ""
+            } = req.query;
+
+            const resultado =
+                await SolicitacaoService
+                    .obterResumoConcluidas({
+                        placa,
+                        dataInicial,
+                        dataFinal,
+                        tipoLavagem,
+                        loja,
+                        origem
+                    });
+
+            return res.json(
+                resultado
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            return res.status(500).json({
+                erro: error.message
+            });
+
+        }
     }
 
     async movimentar(req, res) {

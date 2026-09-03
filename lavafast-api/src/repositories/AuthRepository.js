@@ -58,41 +58,7 @@ class AuthRepository {
 
     }
 
-        async buscarFuncionarioPorEmail(
-        email
-    ) {
-
-        const {
-            data,
-            error
-        } = await supabase
-            .schema("financeiro")
-            .from("funcionarios")
-            .select(`
-                id,
-                nome,
-                cpf,
-                email,
-                cargo,
-                status,
-                loja,
-                loja_padrao_id
-            `)
-            .eq(
-                "email",
-                email
-            )
-            .maybeSingle();
-
-        if (error) {
-
-            throw error;
-
-        }
-
-        return data;
-
-    }
+      
 
         async atualizarEmailFuncionario(
         id,

@@ -16,14 +16,41 @@ export async function listarSolicitacoes(lojas) {
 
 }
 
-export async function listarSolicitacoesConcluidas() {
+export async function listarSolicitacoesConcluidas(
+    pagina = 1,
+    limite = 50,
+    filtros = {}
+) {
 
     const { data } = await api.get(
-        '/solicitacoes/concluidas'
+        "/solicitacoes/concluidas",
+        {
+            params: {
+                pagina,
+                limite,
+
+                placa:
+                    filtros.placa || "",
+
+                dataInicial:
+                    filtros.dataInicial || "",
+
+                dataFinal:
+                    filtros.dataFinal || "",
+
+                tipoLavagem:
+                    filtros.tipoLavagem || "",
+
+                loja:
+                    filtros.loja || "",
+
+                origem:
+                    filtros.origem || ""
+            }
+        }
     );
 
     return data;
-
 }
 
 export async function movimentarSolicitacao(
@@ -108,5 +135,69 @@ export async function finalizarLavagem(
 
     return response.data;
 
+}
+
+export async function listarSolicitacoesConcluidasExportacao(
+    filtros = {}
+) {
+
+    const { data } = await api.get(
+        "/solicitacoes/concluidas/exportacao",
+        {
+            params: {
+                placa:
+                    filtros.placa || "",
+
+                dataInicial:
+                    filtros.dataInicial || "",
+
+                dataFinal:
+                    filtros.dataFinal || "",
+
+                tipoLavagem:
+                    filtros.tipoLavagem || "",
+
+                loja:
+                    filtros.loja || "",
+
+                origem:
+                    filtros.origem || ""
+            }
+        }
+    );
+
+    return data;
+}
+
+export async function obterResumoSolicitacoesConcluidas(
+    filtros = {}
+) {
+
+    const { data } = await api.get(
+        "/solicitacoes/concluidas/resumo",
+        {
+            params: {
+                placa:
+                    filtros.placa || "",
+
+                dataInicial:
+                    filtros.dataInicial || "",
+
+                dataFinal:
+                    filtros.dataFinal || "",
+
+                tipoLavagem:
+                    filtros.tipoLavagem || "",
+
+                loja:
+                    filtros.loja || "",
+
+                origem:
+                    filtros.origem || ""
+            }
+        }
+    );
+
+    return data;
 }
 

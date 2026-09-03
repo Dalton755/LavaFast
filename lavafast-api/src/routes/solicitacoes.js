@@ -17,6 +17,16 @@ router.get(
     SolicitacaoController.listarConcluidas
 );
 
+router.get(
+    '/concluidas/exportacao',
+    SolicitacaoController.exportarConcluidas
+);
+
+router.get(
+    '/concluidas/resumo',
+    SolicitacaoController.resumoConcluidas
+);
+
 router.put(
 
     '/:id/movimentar',

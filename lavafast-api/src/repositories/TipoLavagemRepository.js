@@ -68,3 +68,47 @@ export async function obterTipoLavagemPorId(id) {
     return data;
 
 }
+
+export async function obterTiposLavagemPorIds(ids) {
+
+    const idsValidos = [
+        ...new Set(
+            ids.filter(Boolean)
+        )
+    ];
+
+    if (idsValidos.length === 0) {
+
+        return [];
+
+    }
+
+    const {
+        data,
+        error
+    } = await supabase
+
+        .schema("operacoes")
+
+        .from("tipos_lavagem")
+
+        .select(`
+            id,
+            nome,
+            cor
+        `)
+
+        .in(
+            "id",
+            idsValidos
+        );
+
+    if (error) {
+
+        throw error;
+
+    }
+
+    return data || [];
+
+}
