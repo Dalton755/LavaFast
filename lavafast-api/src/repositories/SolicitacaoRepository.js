@@ -8,6 +8,10 @@ class SolicitacaoRepository {
             .schema('operacoes')
             .from('vw_cards_operacao')
             .select('*')
+            .neq(
+                'status',
+                'FINALIZADA'
+            )
             .order('recebida_em', {
 
                 ascending: true
