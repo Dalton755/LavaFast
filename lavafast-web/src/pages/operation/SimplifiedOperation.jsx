@@ -13,7 +13,9 @@ import logoLocaliza from "../../assets/localiza.png";
 
 
 export default function SimplifiedOperation({
-    abrirConcluidos
+    abrirConcluidos,
+    abrirProdutividade,
+    usuario
 }) {
 
     const {
@@ -111,7 +113,14 @@ export default function SimplifiedOperation({
 
             </div>
 
-            <div className="mb-6">
+            <div
+                className="
+                    mb-6
+                    flex
+                    flex-wrap
+                    gap-3
+                "
+            >
 
                 <button
                     onClick={abrirConcluidos}
@@ -128,6 +137,26 @@ export default function SimplifiedOperation({
                 >
                     ✓ Concluídos
                 </button>
+
+                {usuario?.podeVerValores && (
+
+                    <button
+                        onClick={abrirProdutividade}
+                        className="
+                            bg-blue-600
+                            text-white
+                            px-5
+                            py-3
+                            rounded-xl
+                            font-semibold
+                            hover:bg-blue-700
+                            transition
+                        "
+                    >
+                        📊 Painel gerencial
+                    </button>
+
+                )}
 
             </div>
 

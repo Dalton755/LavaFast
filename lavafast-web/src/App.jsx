@@ -3,6 +3,10 @@ import { useState } from "react";
 import SimplifiedOperation from "./pages/operation/SimplifiedOperation";
 import CompletedOperation from "./pages/operation/CompletedOperation";
 import Login from "./pages/auth/Login";
+import ProductivityDashboard
+    from "./pages/operation/ProductivityDashboard";
+import ProductivityDetails
+    from "./pages/operation/ProductivityDetails";
 
 import { LojaProvider } from "./context/LojaContext";
 import { useAuth } from "./context/AuthContext";
@@ -15,9 +19,34 @@ function Sistema() {
 
     const [pagina, setPagina] = useState("OPERACAO");
 
+    const [
+        detalheProdutividade,
+        setDetalheProdutividade
+    ] = useState(null);
+
     function abrirRelatorio() {
 
         setPagina("CONCLUIDOS");
+
+    }
+
+    function abrirProdutividade() {
+
+        setPagina("PRODUTIVIDADE");
+
+    }
+
+    function abrirDetalhesProdutividade(
+        configuracao
+    ) {
+
+        setDetalheProdutividade(
+            configuracao
+        );
+
+        setPagina(
+            "PRODUTIVIDADE_DETALHES"
+        );
 
     }
 
@@ -29,6 +58,8 @@ function Sistema() {
 
                 <SimplifiedOperation
                     abrirConcluidos={abrirRelatorio}
+                    abrirProdutividade={abrirProdutividade}
+                    usuario={usuario}
                 />
 
             )}
@@ -45,6 +76,39 @@ function Sistema() {
                 />
 
             )}
+
+            {pagina === "PRODUTIVIDADE" && (
+
+                <ProductivityDashboard
+                    voltar={() =>
+                        setPagina("OPERACAO")
+                    }
+
+                    abrirDetalhes={
+                        abrirDetalhesProdutividade
+                    }
+                />
+
+
+
+            )}
+
+            {pagina === "PRODUTIVIDADE_DETALHES" &&
+                detalheProdutividade && (
+
+                    <ProductivityDetails
+                        configuracao={
+                            detalheProdutividade
+                        }
+
+                        voltar={() =>
+                            setPagina(
+                                "PRODUTIVIDADE"
+                            )
+                        }
+                    />
+
+                )}
 
         </LojaProvider>
 

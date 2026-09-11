@@ -11,6 +11,8 @@ import { iniciarSchedulers } from './scheduler/index.js';
 import solicitacaoManualRoutes from "./routes/solicitacaoManual.js";
 import tiposLavagemRoutes from "./routes/tiposLavagem.js";
 import lprRoutes from "./routes/lpr.js";
+import produtividadeRoutes
+    from "./routes/produtividade.js";
 
 
 const app = express();
@@ -27,6 +29,10 @@ app.use(
 app.use(
     "/api/tipos-lavagem",
     tiposLavagemRoutes
+);
+app.use(
+    "/api/produtividade",
+    produtividadeRoutes
 );
 
 app.get('/', (req, res) => {
@@ -79,6 +85,6 @@ app.use(
     lavagensParticularesRoutes
 );
 
-app.use("/api/lpr",lprRoutes);
+app.use("/api/lpr", lprRoutes);
 
 export default app;
