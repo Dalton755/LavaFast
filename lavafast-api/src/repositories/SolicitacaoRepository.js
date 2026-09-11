@@ -260,14 +260,14 @@ class SolicitacaoRepository {
 
             if (filtros.dataInicial) {
                 consulta = consulta.gte(
-                    "finalizada_em",
+                    "recebida_em",
                     `${filtros.dataInicial}T00:00:00-03:00`
                 );
             }
 
             if (filtros.dataFinal) {
                 consulta = consulta.lte(
-                    "finalizada_em",
+                    "recebida_em",
                     `${filtros.dataFinal}T23:59:59.999-03:00`
                 );
             }
