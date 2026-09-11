@@ -43,6 +43,7 @@ function CardProdutividade({
     valor,
     inicio,
     fim,
+    tipos = [],
     Icone,
     onClick
 }) {
@@ -127,6 +128,71 @@ function CardProdutividade({
 
             <div
                 className="
+                    w-full
+                    mt-5
+                    pt-4
+                    border-t
+                    border-slate-100
+                    space-y-2
+                "
+            >
+
+                {tipos.length > 0 ? (
+
+                    tipos.map(
+                        tipo => (
+
+                            <div
+                                key={tipo.id}
+                                className="
+                                    flex
+                                    items-center
+                                    justify-between
+                                    gap-3
+                                    text-sm
+                                "
+                            >
+
+                                <span
+                                    className="
+                                        text-slate-600
+                                        truncate
+                                    "
+                                >
+                                    {tipo.nome}
+                                </span>
+
+                                <span
+                                    className="
+                                        font-bold
+                                        text-slate-900
+                                    "
+                                >
+                                    {tipo.quantidade}
+                                </span>
+
+                            </div>
+
+                        )
+                    )
+
+                ) : (
+
+                    <p
+                        className="
+                            text-sm
+                            text-slate-400
+                        "
+                    >
+                        Nenhuma lavagem
+                    </p>
+
+                )}
+
+            </div>
+
+            <div
+                className="
                     flex
                     justify-between
                     items-end
@@ -172,7 +238,7 @@ function CardProdutividade({
                         text-blue-600
                     "
                 >
-                    Ver placas
+                    Ver
                     <ChevronRight
                         size={17}
                     />
@@ -550,99 +616,111 @@ export default function ProductivityDashboard({
                     !erro &&
                     dados && (
 
-                    <div
-                        className="
+                        <div
+                            className="
                             grid
                             grid-cols-1
                             sm:grid-cols-2
                             xl:grid-cols-4
                             gap-5
                         "
-                    >
+                        >
 
-                        <CardProdutividade
-                            titulo="Hoje"
-                            valor={
-                                dados.hoje?.total || 0
-                            }
-                            inicio={
-                                dados.hoje?.inicio
-                            }
-                            fim={
-                                dados.hoje?.fim
-                            }
-                            Icone={CalendarDays}
-                            onClick={() =>
-                                abrir(
-                                    "hoje",
-                                    "Hoje"
-                                )
-                            }
-                        />
+                            <CardProdutividade
+                                titulo="Hoje"
+                                valor={
+                                    dados.hoje?.total || 0
+                                }
+                                inicio={
+                                    dados.hoje?.inicio
+                                }
+                                fim={
+                                    dados.hoje?.fim
+                                }
+                                tipos={
+                                    dados.hoje?.tipos || []
+                                }
+                                Icone={CalendarDays}
+                                onClick={() =>
+                                    abrir(
+                                        "hoje",
+                                        "Hoje"
+                                    )
+                                }
+                            />
 
-                        <CardProdutividade
-                            titulo="Esta semana"
-                            valor={
-                                dados.semana?.total || 0
-                            }
-                            inicio={
-                                dados.semana?.inicio
-                            }
-                            fim={
-                                dados.semana?.fim
-                            }
-                            Icone={CalendarRange}
-                            onClick={() =>
-                                abrir(
-                                    "semana",
-                                    "Esta semana"
-                                )
-                            }
-                        />
+                            <CardProdutividade
+                                titulo="Esta semana"
+                                valor={
+                                    dados.semana?.total || 0
+                                }
+                                inicio={
+                                    dados.semana?.inicio
+                                }
+                                fim={
+                                    dados.semana?.fim
+                                }
+                                tipos={
+                                    dados.semana?.tipos || []
+                                }
+                                Icone={CalendarRange}
+                                onClick={() =>
+                                    abrir(
+                                        "semana",
+                                        "Esta semana"
+                                    )
+                                }
+                            />
 
-                        <CardProdutividade
-                            titulo="Esta quinzena"
-                            valor={
-                                dados.quinzena?.total || 0
-                            }
-                            inicio={
-                                dados.quinzena?.inicio
-                            }
-                            fim={
-                                dados.quinzena?.fim
-                            }
-                            Icone={CalendarClock}
-                            onClick={() =>
-                                abrir(
-                                    "quinzena",
-                                    "Esta quinzena"
-                                )
-                            }
-                        />
+                            <CardProdutividade
+                                titulo="Esta quinzena"
+                                valor={
+                                    dados.quinzena?.total || 0
+                                }
+                                inicio={
+                                    dados.quinzena?.inicio
+                                }
+                                fim={
+                                    dados.quinzena?.fim
+                                }
+                                tipos={
+                                    dados.quinzena?.tipos || []
+                                }
+                                Icone={CalendarClock}
+                                onClick={() =>
+                                    abrir(
+                                        "quinzena",
+                                        "Esta quinzena"
+                                    )
+                                }
+                            />
 
-                        <CardProdutividade
-                            titulo="Este mês"
-                            valor={
-                                dados.mes?.total || 0
-                            }
-                            inicio={
-                                dados.mes?.inicio
-                            }
-                            fim={
-                                dados.mes?.fim
-                            }
-                            Icone={BarChart3}
-                            onClick={() =>
-                                abrir(
-                                    "mes",
-                                    "Este mês"
-                                )
-                            }
-                        />
+                            <CardProdutividade
+                                titulo="Este mês"
+                                valor={
+                                    dados.mes?.total || 0
+                                }
+                                inicio={
+                                    dados.mes?.inicio
+                                }
+                                fim={
+                                    dados.mes?.fim
+                                }
+                                tipos={
+                                    dados.mes?.tipos || []
+                                }
+                                Icone={BarChart3}
+                                onClick={() =>
+                                    abrir(
+                                        "mes",
+                                        "Este mês"
+                                    )
+                                }
+                            />
 
-                    </div>
+                        </div>
 
-                )}
+                    )}
 
             </div>
 

@@ -222,8 +222,25 @@ class ProdutividadeService {
             "mes"
         ];
 
+        /*
+         * Carregamos os tipos uma única vez.
+         */
+        const tiposCadastrados =
+            await listarTiposLavagem();
+
+        const mapaTipos =
+            new Map(
+                tiposCadastrados.map(
+                    tipo => [
+                        String(tipo.id),
+                        tipo.nome
+                    ]
+                )
+            );
+
         const resultados =
             await Promise.all(
+
                 periodos.map(
                     async periodo => {
 
@@ -232,13 +249,112 @@ class ProdutividadeService {
                                 periodo
                             );
 
-                        const dados =
-                            await ProdutividadeRepository
+                        const [
+                            dados,
+                            registrosTipos
+                        ] = await Promise.all([
+
+                            ProdutividadeRepository
                                 .contarFinalizadasEntre(
                                     intervalo.inicio,
                                     intervalo.fim,
                                     lojas
+                                ),
+
+                            ProdutividadeRepository
+                                .listarTiposFinalizados(
+                                    intervalo.inicio,
+                                    intervalo.fim,
+                                    lojas
+                                )
+
+                        ]);
+
+                        /*
+                         * Agrupa as lavagens LOCALIZA
+                         * por tipo_lavagem_id.
+                         */
+                        const contagem =
+                            new Map();
+
+                        registrosTipos.forEach(
+                            item => {
+
+                                const chave =
+                                    item.tipo_lavagem_id
+                                        ? String(
+                                            item.tipo_lavagem_id
+                                        )
+                                        : "__SEM_TIPO__";
+
+                                contagem.set(
+                                    chave,
+                                    (
+                                        contagem.get(
+                                            chave
+                                        ) || 0
+                                    ) + 1
                                 );
+
+                            }
+                        );
+
+                        const resumoTipos = [];
+
+                        contagem.forEach(
+                            (
+                                quantidade,
+                                id
+                            ) => {
+
+                                const nome =
+                                    id === "__SEM_TIPO__"
+                                        ? "Sem tipo"
+                                        : (
+                                            mapaTipos.get(
+                                                id
+                                            ) ||
+                                            "Tipo não encontrado"
+                                        );
+
+                                resumoTipos.push({
+                                    id,
+                                    nome,
+                                    quantidade
+                                });
+
+                            }
+                        );
+
+                        /*
+                         * PARTICULAR não possui
+                         * tipo_lavagem_id.
+                         *
+                         * Mantemos separado para que
+                         * a soma bata com o total.
+                         */
+                        if (
+                            dados.particulares > 0
+                        ) {
+
+                            resumoTipos.push({
+                                id:
+                                    "PARTICULAR",
+
+                                nome:
+                                    "Particular",
+
+                                quantidade:
+                                    dados.particulares
+                            });
+
+                        }
+
+                        resumoTipos.sort(
+                            (a, b) =>
+                                b.quantidade -
+                                a.quantidade
+                        );
 
                         return [
                             periodo,
@@ -249,7 +365,10 @@ class ProdutividadeService {
                                 fim:
                                     intervalo.dataFinal,
 
-                                ...dados
+                                ...dados,
+
+                                tipos:
+                                    resumoTipos
                             }
                         ];
 

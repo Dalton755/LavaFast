@@ -139,6 +139,83 @@ class ProdutividadeRepository {
 
     }
 
+    async listarTiposFinalizados(
+        inicio,
+        fim,
+        lojas = []
+    ) {
+
+        const todos = [];
+        const tamanhoPagina = 1000;
+        let paginaInicial = 0;
+
+        while (true) {
+
+            let consulta = supabase
+                .schema("operacoes")
+                .from("solicitacoes_lavagem")
+                .select(
+                    "tipo_lavagem_id"
+                )
+                .eq(
+                    "status",
+                    "FINALIZADA"
+                )
+                .gte(
+                    "finalizada_em",
+                    inicio
+                )
+                .lte(
+                    "finalizada_em",
+                    fim
+                );
+
+            if (lojas.length > 0) {
+
+                consulta = consulta.in(
+                    "loja_id",
+                    lojas
+                );
+
+            }
+
+            const {
+                data,
+                error
+            } = await consulta.range(
+                paginaInicial,
+                paginaInicial +
+                tamanhoPagina -
+                1
+            );
+
+            if (error) {
+                throw error;
+            }
+
+            const lote =
+                data || [];
+
+            todos.push(
+                ...lote
+            );
+
+            if (
+                lote.length <
+                tamanhoPagina
+            ) {
+                break;
+            }
+
+            paginaInicial +=
+                tamanhoPagina;
+
+        }
+
+        return todos;
+
+    }
+
     async listarLocaliza(
         inicio,
         fim,
