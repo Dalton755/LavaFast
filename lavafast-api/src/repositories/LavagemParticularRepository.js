@@ -59,7 +59,7 @@ class LavagemParticularRepository {
         if (filtros.dataInicial) {
 
             consulta = consulta.gte(
-                "finalizada_em",
+                "created_at",
                 `${filtros.dataInicial}T00:00:00-03:00`
             );
 
