@@ -4,6 +4,7 @@ import GmailLabelService from "./services/gmail/GmailLabelService.js";
 
 const PORT = process.env.PORT || 3000;
 
+// Deploy marker: Gmail Push production configuration.
 app.listen(PORT, "0.0.0.0", async () => {
 
     console.log("");
