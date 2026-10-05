@@ -5,8 +5,7 @@ import { google } from 'googleapis';
 import { authenticate } from '@google-cloud/local-auth';
 
 const SCOPES = [
-    'https://www.googleapis.com/auth/gmail.modify',
-    'https://www.googleapis.com/auth/gmail.labels'
+    'https://www.googleapis.com/auth/gmail.readonly'
 ];
 
 const TOKEN_PATH = path.join(
