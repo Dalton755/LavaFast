@@ -94,8 +94,14 @@ class LocalizaGmailController {
         }
 
         try {
-            const resultado = await LocalizaGmailPushService.renovarWatch();
-            return res.json({ sucesso: true, ...resultado });
+            const watch = await LocalizaGmailPushService.renovarWatch();
+            const reconciliacao = await LocalizaGmailPushService.reconciliarRecentes();
+
+            return res.json({
+                sucesso: true,
+                watch,
+                reconciliacao
+            });
         } catch (erro) {
             console.error('[GmailPush][Watch]', erro);
             return res.status(500).json({
