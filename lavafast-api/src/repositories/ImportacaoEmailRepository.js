@@ -2,6 +2,24 @@ import supabase from '../config/supabase.js';
 
 class ImportacaoEmailRepository {
 
+    async listarStatusPorMessageIds(messageIds) {
+        if (!messageIds.length) return new Map();
+
+        const { data, error } = await supabase
+            .schema('operacoes')
+            .from('importacoes_email')
+            .select('message_id, status')
+            .in('message_id', messageIds);
+
+        if (error) throw error;
+
+        return new Map((data || []).map(registro => [
+            registro.message_id,
+            registro.status
+        ]));
+    }
+
+
     async buscarPorMessageId(messageId) {
         const { data, error } = await supabase
             .schema('operacoes')
