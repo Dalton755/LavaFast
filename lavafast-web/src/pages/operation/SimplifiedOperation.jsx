@@ -39,7 +39,7 @@ export default function SimplifiedOperation({ abrirConcluidos, abrirProdutividad
 
     const { tipos } = useTiposLavagem();
     const { lojas } = useLoja();
-    const { lojasSelecionadas } = useLojasSelecionadas();
+    const { lojasSelecionadas, selecionarLojas } = useLojasSelecionadas();
     const { funcionarios } = useFuncionarios();
 
     const [modalParticular, setModalParticular] = useState(false);
@@ -54,7 +54,6 @@ export default function SimplifiedOperation({ abrirConcluidos, abrirProdutividad
     const [versaoConsulta, setVersaoConsulta] = useState(0);
 
     const placa = pesquisa.trim();
-    const idsLojas = lojasSelecionadas.join(",");
 
     // Filtragem dos cards em memória: resposta instantânea a cada tecla.
     const localizaFiltrada = useMemo(
@@ -82,7 +81,7 @@ export default function SimplifiedOperation({ abrirConcluidos, abrirProdutividad
         // Somente o histórico consulta a API; requisições anteriores são canceladas.
         const timer = setTimeout(async () => {
             try {
-                const dados = await consultarPlacaConcluida(placa, idsLojas, controller.signal);
+                const dados = await consultarPlacaConcluida(placa, controller.signal);
                 if (!cancelada) setConcluidas(Array.isArray(dados) ? dados : []);
             } catch (erro) {
                 if (!cancelada && erro.code !== "ERR_CANCELED") {
@@ -99,7 +98,7 @@ export default function SimplifiedOperation({ abrirConcluidos, abrirProdutividad
             clearTimeout(timer);
             controller.abort();
         };
-    }, [placa, idsLojas, versaoConsulta]);
+    }, [placa, versaoConsulta]);
 
     async function tratarConclusaoLocaliza(item) {
         try {
@@ -132,13 +131,29 @@ export default function SimplifiedOperation({ abrirConcluidos, abrirProdutividad
             } else {
                 await reabrirLavagemParticular(reabrirItem.id);
             }
+            // Uma lavagem pode ter sido concluída em loja fora do filtro atual.
+            // Incluímos essa loja para o card reaparecer imediatamente na operação.
+            const lojaReaberta = reabrirItem.origem === "LOCALIZA" ? reabrirItem.loja_id : null;
+            const incluirLoja = lojaReaberta && !lojasSelecionadas.includes(lojaReaberta);
+            if (incluirLoja) {
+                selecionarLojas([...lojasSelecionadas, lojaReaberta]);
+            }
+
             setConcluidas(atual => atual.filter(item =>
                 !(item.id === reabrirItem.id && item.origem === reabrirItem.origem)
             ));
             setReabrirItem(null);
-            await Promise.all([recarregarLocaliza(), recarregarParticulares()]);
+
+            if (incluirLoja) {
+                // O efeito de useOperacaoSimplificada carregará a loja recém-selecionada.
+                await recarregarParticulares();
+            } else {
+                await Promise.all([recarregarLocaliza(), recarregarParticulares()]);
+            }
             setVersaoConsulta(v => v + 1);
-            toast.success("Lavagem devolvida à operação.");
+            toast.success(incluirLoja
+                ? "Lavagem devolvida à operação. Loja incluída no filtro."
+                : "Lavagem devolvida à operação.");
         } catch (erro) {
             toast.error(erro.response?.data?.erro || "Não foi possível reabrir a lavagem.");
         } finally {
@@ -196,7 +211,7 @@ export default function SimplifiedOperation({ abrirConcluidos, abrirProdutividad
                     )}
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
-                    Busca imediata nas operações ativas e consulta de concluídas a partir de 3 caracteres.
+                    Busca imediata nas operações ativas e consulta de concluídas em todas as lojas a partir de 3 caracteres.
                 </p>
             </section>
 
