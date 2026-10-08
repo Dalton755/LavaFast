@@ -54,6 +54,24 @@ function isHistoryExpiredError(erro) {
     return status === 404;
 }
 
+// Gmail pode bloquear chamadas por alguns minutos quando a cota do usuario acaba.
+// Nao insista antes do horario informado: isso preserva a cota para a operacao.
+export function proximaTentativaGmail(erroOuTexto) {
+    const texto = String(erroOuTexto?.message || erroOuTexto || '');
+    const match = texto.match(/Retry after\\s+(\\d{4}-\\d{2}-\\d{2}T[\\d:.+-]+Z?)/i);
+    if (!match) return null;
+
+    const instante = Date.parse(match[1]);
+    return Number.isFinite(instante) ? instante : null;
+}
+
+function erroLimiteGmail(erro) {
+    const texto = String(erro?.message || erro || '');
+    const status = Number(erro?.code || erro?.response?.status || erro?.status);
+    return status === 429 ||
+        /rate.?limit|quota.exceeded|too many requests|GMAIL_BACKOFF/i.test(texto);
+}
+
 class LocalizaGmailPushService {
 
     async processarMensagem(messageId, gmailHistoryId = null) {
@@ -226,23 +244,60 @@ class LocalizaGmailPushService {
     }
 
     async reconciliarRecentes() {
-        const mensagens = await listarEmails({
-            query: `label:${LABEL_NAME} newer_than:2d`,
-            limite: 500
-        });
+        // Checa o limite ANTES da chamada Gmail, inclusive quando o Pub/Sub
+        // continuar tentando entregar a mesma notificacao.
+        const estado = await GmailSyncRepository.obter();
+        const retentarEm = proximaTentativaGmail(estado?.last_error);
+
+        if (retentarEm && Date.now() < retentarEm + 30_000) {
+            const erro = new Error(
+                `GMAIL_BACKOFF: Retry after ${new Date(retentarEm).toISOString()}`
+            );
+            erro.code = 'GMAIL_BACKOFF';
+            throw erro;
+        }
+
+        // Procura pelo marcador OU remetente: mensagens nao rotuladas
+        // tambem precisam chegar ao app.
+        const pesquisa = `{label:${LABEL_NAME} from:no-reply@localiza.com} newer_than:4d`;
+        let mensagens;
+
+        try {
+            mensagens = await listarEmails({ query: pesquisa, limite: 250 });
+        } catch (erro) {
+            if (erroLimiteGmail(erro)) {
+                await GmailSyncRepository.registrarErro(erro);
+            }
+            throw erro;
+        }
+
+        const statusPorId = await ImportacaoEmailRepository.listarStatusPorMessageIds(
+            mensagens.map(item => item.id)
+        );
+        const finalizados = new Set(['PROCESSADO', 'SUCESSO', 'IMPORTADO', 'DUPLICADO']);
+        const pendentes = mensagens.filter(item => !finalizados.has(statusPorId.get(item.id)));
 
         let importados = 0;
-        let ignorados = 0;
+        let ignorados = mensagens.length - pendentes.length;
         let erros = 0;
+        let processados = 0;
 
-        for (const mensagem of mensagens) {
+        // Uma rodada limitada impede tempestades de chamadas e preserva
+        // a operacao. Os demais e-mails entram nas proximas rodadas.
+        for (const mensagem of pendentes.slice(0, 15)) {
             try {
                 const resultado = await this.processarMensagem(mensagem.id);
                 importados += resultado.importados || 0;
                 ignorados += resultado.ignorados || 0;
+                processados++;
             } catch (erro) {
                 erros++;
                 console.error('[GmailPush][Reconciliacao]', mensagem.id, erro.message);
+
+                if (erroLimiteGmail(erro)) {
+                    await GmailSyncRepository.registrarErro(erro);
+                    throw erro; // Nao tenta os demais enquanto a cota estiver bloqueada.
+                }
             }
         }
 
@@ -250,6 +305,8 @@ class LocalizaGmailPushService {
 
         return {
             encontrados: mensagens.length,
+            pendentes: pendentes.length,
+            processados,
             importados,
             ignorados,
             erros
@@ -266,6 +323,16 @@ class LocalizaGmailPushService {
         if (!estado?.history_id || !estado?.label_id) {
             await this.inicializar();
             estado = await GmailSyncRepository.obter();
+        }
+
+        // Evita repetidas leituras de historico durante bloqueio por cota.
+        const retentarEm = proximaTentativaGmail(estado?.last_error);
+        if (retentarEm && Date.now() < retentarEm + 30_000) {
+            const erro = new Error(
+                `GMAIL_BACKOFF: Retry after ${new Date(retentarEm).toISOString()}`
+            );
+            erro.code = 'GMAIL_BACKOFF';
+            throw erro;
         }
 
         try {
