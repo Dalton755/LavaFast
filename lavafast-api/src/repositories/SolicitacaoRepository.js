@@ -102,8 +102,8 @@ class SolicitacaoRepository {
 
         let consulta = supabase
             .schema("operacoes")
-            .from("solicitacoes_lavagem")
-            .select("id, placa, loja_id, status, numero_solicitacao, recebida_em, finalizada_em, fornecedor, responsavel_localiza, loja:lojas(nome,codigo)")
+            .from("vw_cards_operacao")
+            .select("id, placa, loja_id, loja, status, numero_solicitacao, recebida_em, finalizada_em, fornecedor, responsavel_localiza, tipo_lavagem")
             .eq("status", "FINALIZADA");
 
         consulta = placa.length === 7
