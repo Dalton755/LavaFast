@@ -32,8 +32,12 @@ class LavagemParticularRepository {
                 .select("id, nome")
                 .in("id", ids);
 
-            if (error) throw error;
-            nomesPorId = new Map((funcionarios || []).map(f => [f.id, f.nome]));
+            if (error) {
+                // Falha ao obter nomes nao deve impedir a consulta de lavagens.
+                console.error("[Lavagens particulares] Falha ao consultar responsáveis:", error);
+            } else {
+                nomesPorId = new Map((funcionarios || []).map(f => [f.id, f.nome]));
+            }
         }
 
         return registros.map(item => ({
