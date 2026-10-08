@@ -202,9 +202,9 @@ export async function obterResumoSolicitacoesConcluidas(
 }
 
 
-export async function consultarPlacaConcluida(placa, lojas, signal) {
+export async function consultarPlacaConcluida(placa, signal) {
     const { data } = await api.get("/solicitacoes/consulta-placa", {
-        params: { placa, lojas },
+        params: { placa },
         signal
     });
     return data;
