@@ -58,7 +58,7 @@ function isHistoryExpiredError(erro) {
 // Nao insista antes do horario informado: isso preserva a cota para a operacao.
 export function proximaTentativaGmail(erroOuTexto) {
     const texto = String(erroOuTexto?.message || erroOuTexto || '');
-    const match = texto.match(/Retry after\\s+(\\d{4}-\\d{2}-\\d{2}T[\\d:.+-]+Z?)/i);
+    const match = texto.match(/Retry after\s+(\d{4}-\d{2}-\d{2}T[\d:.+-]+Z?)/i);
     if (!match) return null;
 
     const instante = Date.parse(match[1]);
