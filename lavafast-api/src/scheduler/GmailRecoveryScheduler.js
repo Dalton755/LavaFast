@@ -2,6 +2,7 @@ import LocalizaGmailPushService, {
     proximaTentativaGmail
 } from '../services/LocalizaGmailPushService.js';
 import GmailSyncRepository from '../repositories/GmailSyncRepository.js';
+import supabase from '../config/supabase.js';
 
 const MEIA_HORA = 30 * 60 * 1000;
 let executando = false;
