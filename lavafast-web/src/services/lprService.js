@@ -1,23 +1,24 @@
+import { API_BASE_URL } from "../api/axios";
+
 export async function reconhecerPlaca(imagem) {
-
-    console.log("Enviando imagem para API...");
-
     const form = new FormData();
-    form.append("imagem", imagem);
+    form.append("imagem", imagem, "placa.jpg");
 
-    const resposta = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/lpr`,
-        {
-            method: "POST",
-            body: form
-        }
-    );
+    // Usa a mesma API das demais telas (sem duplicar o prefixo /api).
+    const resposta = await fetch(`${API_BASE_URL}/lpr`, {
+        method: "POST",
+        body: form
+    });
 
-    console.log("Status:", resposta.status);
+    const dados = await resposta.json().catch(() => null);
 
-    const dados = await resposta.json();
-
-    console.log("Resposta da API:", dados);
+    if (!resposta.ok) {
+        throw new Error(
+            dados?.message ||
+            dados?.error ||
+            "Nao foi possivel reconhecer a placa."
+        );
+    }
 
     return dados;
 }
