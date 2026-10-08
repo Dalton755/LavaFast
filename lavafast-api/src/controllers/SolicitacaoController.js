@@ -30,6 +30,32 @@ class SolicitacaoController {
 
     }
 
+
+    async consultarPlaca(req, res) {
+        try {
+            const resultado = await SolicitacaoService.consultarPlaca(
+                req.query.placa,
+                req.query.lojas
+            );
+            return res.json(resultado);
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ erro: "Falha ao consultar a placa." });
+        }
+    }
+
+    async reabrir(req, res) {
+        try {
+            const solicitacao = await SolicitacaoService.reabrir(req.params.id);
+            return res.json({ sucesso: true, solicitacao });
+        } catch (error) {
+            return res.status(error.status || 500).json({
+                sucesso: false,
+                erro: error.status === 409 ? error.message : "Não foi possível retornar a lavagem à operação."
+            });
+        }
+    }
+
     async listarConcluidas(req, res) {
 
         try {

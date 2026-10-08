@@ -62,6 +62,19 @@ class LavagemParticularController {
 
     }
 
+
+    async reabrir(req, res) {
+        try {
+            const lavagem = await LavagemParticularService.reabrir(req.params.id);
+            return res.json({ sucesso: true, lavagem });
+        } catch (error) {
+            return res.status(error.status || 500).json({
+                sucesso: false,
+                erro: error.status === 409 ? error.message : "Não foi possível retornar a lavagem à operação."
+            });
+        }
+    }
+
     async concluir(req, res) {
 
         try {

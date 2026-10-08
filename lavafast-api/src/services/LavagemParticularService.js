@@ -8,6 +8,11 @@ class LavagemParticularService {
 
     }
 
+
+    async reabrir(id) {
+        return LavagemParticularRepository.reabrir(id);
+    }
+
     async criar(dados) {
 
         return await LavagemParticularRepository.criar(dados);

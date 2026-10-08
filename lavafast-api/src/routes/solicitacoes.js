@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import SolicitacaoController from '../controllers/SolicitacaoController.js';
+import { autenticar } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
@@ -11,6 +12,9 @@ router.get(
     SolicitacaoController.listar
 
 );
+
+router.get('/consulta-placa', autenticar, SolicitacaoController.consultarPlaca);
+router.put('/:id/reabrir', autenticar, SolicitacaoController.reabrir);
 
 router.get(
     '/concluidas',

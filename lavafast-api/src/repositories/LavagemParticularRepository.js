@@ -17,6 +17,48 @@ class LavagemParticularRepository {
 
     }
 
+
+    async buscarFinalizadasPorPlaca(placa) {
+        let consulta = supabase
+            .schema("operacoes")
+            .from("lavagens_avulsas")
+            .select("id, placa, status, created_at, finalizada_em")
+            .eq("status", "FINALIZADA");
+
+        consulta = placa.length === 7
+            ? consulta.eq("placa", placa)
+            : consulta.ilike("placa", `${placa}%`);
+
+        const { data, error } = await consulta
+            .order("finalizada_em", { ascending: false })
+            .limit(10);
+
+        if (error) throw error;
+        return data || [];
+    }
+
+    async reabrir(id) {
+        const { data, error } = await supabase
+            .schema("operacoes")
+            .from("lavagens_avulsas")
+            .update({
+                status: "EM_LAVAGEM",
+                finalizada_em: null
+            })
+            .eq("id", id)
+            .eq("status", "FINALIZADA")
+            .select("id, placa, status")
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) {
+            const erro = new Error("Esta lavagem já não está finalizada ou não foi encontrada.");
+            erro.status = 409;
+            throw erro;
+        }
+        return data;
+    }
+
     async listarConcluidas() {
 
         const { data, error } = await supabase

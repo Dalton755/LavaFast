@@ -42,6 +42,35 @@ class SolicitacaoService {
 
     }
 
+
+    async consultarPlaca(placa, lojas) {
+        const termo = String(placa || "")
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, "")
+            .slice(0, 7);
+
+        if (termo.length < 3) return [];
+
+        const lojasSelecionadas = String(lojas || "")
+            .split(",")
+            .map(id => id.trim())
+            .filter(Boolean);
+
+        const [localiza, particulares] = await Promise.all([
+            SolicitacaoRepository.buscarFinalizadasPorPlaca(termo, lojasSelecionadas),
+            LavagemParticularRepository.buscarFinalizadasPorPlaca(termo)
+        ]);
+
+        return [
+            ...localiza.map(item => ({ ...item, origem: "LOCALIZA" })),
+            ...particulares.map(item => ({ ...item, origem: "PARTICULAR" }))
+        ].sort((a, b) => new Date(b.finalizada_em) - new Date(a.finalizada_em));
+    }
+
+    async reabrir(id) {
+        return SolicitacaoRepository.reabrir(id);
+    }
+
     async movimentar(id, funcionarioId) {
 
 
