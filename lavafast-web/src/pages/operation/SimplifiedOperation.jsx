@@ -251,13 +251,27 @@ export default function SimplifiedOperation({ abrirConcluidos, abrirProdutividad
                                     <div className="mt-2 text-sm text-slate-600">
                                         <span>{item.origem === "LOCALIZA" ? "Localiza" : "Particular"}</span>
                                         {item.origem === "LOCALIZA" && item.loja && (
-                                            <span> • {item.loja.nome || item.loja.codigo}</span>
+                                            <span> • {typeof item.loja === "string" ? item.loja : item.loja.nome || item.loja.codigo}</span>
                                         )}
                                     </div>
                                     <div className="mt-1 text-xs text-slate-500">
                                         Finalizada em {formatarData(item.finalizada_em)}
                                         {item.numero_solicitacao ? ` • #${item.numero_solicitacao}` : ""}
                                     </div>
+                                    <dl className="mt-3 grid grid-cols-1 gap-3 rounded-lg border border-slate-100 bg-white/75 p-3 sm:grid-cols-2">
+                                        <div className="min-w-0">
+                                            <dt className="text-xs font-medium text-slate-500">Tipo de lavagem</dt>
+                                            <dd className="mt-1 break-words text-sm font-semibold text-slate-800">
+                                                {item.tipo_lavagem || "Não cadastrado"}
+                                            </dd>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <dt className="text-xs font-medium text-slate-500">Responsável</dt>
+                                            <dd className="mt-1 break-words text-sm font-semibold text-slate-800">
+                                                {item.responsavel_localiza || item.responsavel || item.lavador || "Não informado"}
+                                            </dd>
+                                        </div>
+                                    </dl>
                                     <button type="button" onClick={() => setReabrirItem(item)}
                                         className="mt-4 w-full rounded-xl border border-emerald-600 px-4 py-2.5 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100">
                                         Voltar para operação
