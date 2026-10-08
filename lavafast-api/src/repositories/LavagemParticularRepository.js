@@ -13,16 +13,40 @@ class LavagemParticularRepository {
 
         if (error) throw error;
 
-        return data;
+        return await this.comResponsaveis(data || []);
 
     }
 
+    // O funcionario selecionado e armazenado por ID; obtemos o nome no cadastro.
+    async comResponsaveis(registros) {
+        const ids = [...new Set(registros
+            .filter(item => !item.lavador && item.funcionario_id)
+            .map(item => item.funcionario_id))];
+
+        let nomesPorId = new Map();
+
+        if (ids.length) {
+            const { data: funcionarios, error } = await supabase
+                .schema("financeiro")
+                .from("funcionarios")
+                .select("id, nome")
+                .in("id", ids);
+
+            if (error) throw error;
+            nomesPorId = new Map((funcionarios || []).map(f => [f.id, f.nome]));
+        }
+
+        return registros.map(item => ({
+            ...item,
+            responsavel: item.lavador || nomesPorId.get(item.funcionario_id) || null
+        }));
+    }
 
     async buscarFinalizadasPorPlaca(placa) {
         let consulta = supabase
             .schema("operacoes")
             .from("lavagens_avulsas")
-            .select("id, placa, status, created_at, finalizada_em")
+            .select("id, placa, status, created_at, finalizada_em, lavador, funcionario_id")
             .eq("status", "FINALIZADA");
 
         consulta = placa.length === 7
@@ -34,7 +58,7 @@ class LavagemParticularRepository {
             .limit(10);
 
         if (error) throw error;
-        return data || [];
+        return await this.comResponsaveis(data || []);
     }
 
     async reabrir(id) {
