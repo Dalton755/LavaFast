@@ -43,7 +43,7 @@ class SolicitacaoService {
     }
 
 
-    async consultarPlaca(placa, lojas) {
+    async consultarPlaca(placa) {
         const termo = String(placa || "")
             .toUpperCase()
             .replace(/[^A-Z0-9]/g, "")
@@ -51,13 +51,8 @@ class SolicitacaoService {
 
         if (termo.length < 3) return [];
 
-        const lojasSelecionadas = String(lojas || "")
-            .split(",")
-            .map(id => id.trim())
-            .filter(Boolean);
-
         const [localiza, particulares] = await Promise.all([
-            SolicitacaoRepository.buscarFinalizadasPorPlaca(termo, lojasSelecionadas),
+            SolicitacaoRepository.buscarFinalizadasPorPlaca(termo),
             LavagemParticularRepository.buscarFinalizadasPorPlaca(termo)
         ]);
 
