@@ -1,86 +1,68 @@
 function extrair(texto, regex) {
-
-    texto = texto.replace(/\*/g, "");
-
     const match = texto.match(regex);
-
     return match ? match[1].trim() : "";
-
 }
 
-export function parseLocaliza(texto) {
-    texto = texto.replace(/\*/g, "");
+const regexNumero = /^\d{7,12}$/;
+const regexPlaca = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/i;
 
-    const linhasVeiculos = [];
+function extrairValor(linhas, inicio, textoLinha) {
+    const trecho = [textoLinha, ...linhas.slice(inicio + 1, inicio + 6)];
 
-    const linhas = texto.split("\n");
+    for (let i = 0; i < trecho.length; i++) {
+        const linha = trecho[i];
 
-    linhas.forEach(linha => {
+        if (i > 0 && regexNumero.test(linha)) break;
 
-        linha = linha.trim();
+        const resultado = linha.match(/R\$\s*([\d.,]+)/i);
+        if (resultado) return resultado[1];
+    }
 
-        if (!linha) return;
+    return "";
+}
 
-        const partes = linha.split(/\s+/);
+export function parseLocaliza(textoOriginal) {
+    const texto = String(textoOriginal || "")
+        .replace(/\*/g, "")
+        .replace(/\r/g, "")
+        .replace(/\u00a0/g, " ");
 
-        if (partes.length < 3) return;
+    const linhas = texto.split("\n").map(linha => linha.trim()).filter(Boolean);
+    const veiculos = [];
+    const vistos = new Set();
 
-        const numeroSolicitacao = partes[0];
+    for (let i = 0; i < linhas.length; i++) {
+        const linha = linhas[i];
+        let numeroSolicitacao = "";
+        let placa = "";
 
-        const placa = partes[1];
+        const mesmaLinha = linha.match(/^(\d{7,12})\s+([A-Z]{3}[0-9][A-Z0-9][0-9]{2})(?:\s|$)/i);
 
-        if (!/^\d+$/.test(numeroSolicitacao)) return;
+        if (mesmaLinha) {
+            numeroSolicitacao = mesmaLinha[1];
+            placa = mesmaLinha[2].toUpperCase();
+        } else if (regexNumero.test(linha) && regexPlaca.test(linhas[i + 1] || "")) {
+            numeroSolicitacao = linha;
+            placa = linhas[i + 1].toUpperCase();
+        } else {
+            continue;
+        }
 
-        const valor = linha.includes("R$")
-            ? linha.split("R$")[1].trim()
-            : "";
+        if (vistos.has(numeroSolicitacao)) continue;
+        vistos.add(numeroSolicitacao);
 
-        linhasVeiculos.push({
-
+        veiculos.push({
             numeroSolicitacao,
-
             placa,
-
-            valor
-
+            valor: extrairValor(linhas, i, linha)
         });
-
-    });
+    }
 
     return {
-
-        fornecedor:
-
-            extrair(
-                texto,
-                /Fornecedor:\s*(.+)/
-            ),
-
-        responsavel:
-
-            extrair(
-                texto,
-                /Responsável pela Solicitação:\s*(.+)/
-            ),
-
-        agencia:
-
-            extrair(
-                texto,
-                /Agencia da Abertura:\s*(.+)/
-            ),
-
-        dataAbertura:
-
-            extrair(
-                texto,
-                /Data da Abertura da Solicitação:\s*(.+)/
-            ),
-
-        veiculos:
-
-            linhasVeiculos
-
+        fornecedor: extrair(texto, /Fornecedor:\s*(.+)/i),
+        responsavel: extrair(texto, /Responsável pela Solicitação:\s*(.+)/i),
+        agencia: extrair(texto, /Ag[eê]ncia da Abertura:\s*(.+)/i),
+        dataAbertura: extrair(texto, /Data da Abertura da Solicitação:\s*(.+)/i),
+        veiculos
     };
-
 }
