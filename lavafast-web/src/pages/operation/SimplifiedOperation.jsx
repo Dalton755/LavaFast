@@ -196,7 +196,7 @@ export default function SimplifiedOperation({ abrirConcluidos, abrirProdutividad
                 <div className="relative">
                     <Search size={19} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
-                        id="busca-placa" type="search" inputMode="text" autoComplete="off" spellCheck={false}
+                        id="busca-placa" type="text" inputMode="text" autoComplete="off" spellCheck={false}
                         placeholder="Ex.: ABC1D23"
                         value={pesquisa}
                         maxLength={7}
