@@ -30,3 +30,7 @@ export async function concluirLavagemParticular(id) {
     return data;
 
 }
+export async function reabrirLavagemParticular(id) {
+    const { data } = await api.put(`/lavagens-particulares/${id}/reabrir`);
+    return data;
+}

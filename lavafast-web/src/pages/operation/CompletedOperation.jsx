@@ -1,4 +1,8 @@
 import MainLayout from "../../layouts/MainLayout";
+import ReabrirLavagemModal from "../../components/operation-simple/ReabrirLavagemModal";
+import { reabrirSolicitacao } from "../../api/solicitacoes";
+import { reabrirLavagemParticular } from "../../api/lavagensParticulares";
+import toast from "react-hot-toast";
 import useSolicitacoesConcluidas from "../../hooks/useSolicitacoesConcluidas";
 import {
     listarSolicitacoesConcluidasExportacao,
@@ -12,6 +16,7 @@ import {
 
 import {
     ArrowLeft,
+    RotateCcw,
     Search,
     Filter,
     X,
@@ -54,6 +59,8 @@ export default function CompletedOperation({
     const [tipoLavagem, setTipoLavagem] = useState("");
     const [loja, setLoja] = useState("");
     const [origem, setOrigem] = useState("");
+    const [reabrirItem, setReabrirItem] = useState(null);
+    const [reabrindo, setReabrindo] = useState(false);
 
     const {
         concluidas,
@@ -62,7 +69,8 @@ export default function CompletedOperation({
         total,
         totalPaginas,
         proximaPagina,
-        paginaAnterior
+        paginaAnterior,
+        recarregar
     } = useSolicitacoesConcluidas({
         placa,
         dataInicial,
@@ -72,6 +80,26 @@ export default function CompletedOperation({
         origem
     });
 
+
+    async function confirmarReabertura() {
+        if (!reabrirItem || reabrindo) return;
+        setReabrindo(true);
+
+        try {
+            if (reabrirItem.origem === "LOCALIZA") {
+                await reabrirSolicitacao(reabrirItem.id);
+            } else {
+                await reabrirLavagemParticular(reabrirItem.id);
+            }
+            setReabrirItem(null);
+            await recarregar();
+            toast.success("Lavagem devolvida à operação.");
+        } catch (erro) {
+            toast.error(erro.response?.data?.erro || "Não foi possível reabrir a lavagem.");
+        } finally {
+            setReabrindo(false);
+        }
+    }
 
     /*
      * Converte data para YYYY-MM-DD
@@ -1903,6 +1931,13 @@ export default function CompletedOperation({
 
                                 </div>
 
+                                <div className="mt-5 flex justify-end border-t border-slate-100 pt-4">
+                                    <button type="button" onClick={() => setReabrirItem(item)}
+                                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-amber-300 hover:bg-amber-50">
+                                        <RotateCcw size={16} /> Voltar para operação
+                                    </button>
+                                </div>
+
                             </div>
 
                         ))}
@@ -2029,6 +2064,12 @@ export default function CompletedOperation({
 
             </div>
 
+            <ReabrirLavagemModal
+                registro={reabrirItem}
+                carregando={reabrindo}
+                confirmar={confirmarReabertura}
+                cancelar={() => setReabrirItem(null)}
+            />
         </MainLayout>
 
     );

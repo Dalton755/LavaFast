@@ -1,240 +1,74 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Check, Clock3, MapPin } from "lucide-react";
 import TempoOperacao from "./TempoOperacao";
 
-function formatarTempoDecorrido(dataInicial) {
+const rotulosStatus = {
+    SOLICITADO: "Solicitada",
+    AGUARDANDO: "Aguardando",
+    EM_LAVAGEM: "Em lavagem"
+};
 
-    if (!dataInicial) {
-        return "--";
+export default function LocalizaCard({ solicitacao, onConcluir }) {
+    const [enviando, setEnviando] = useState(false);
+
+    async function concluir() {
+        if (enviando) return;
+        setEnviando(true);
+        try {
+            await onConcluir(solicitacao);
+        } catch {
+            // O feedback é exibido pelo painel; o card permanece disponível.
+        } finally {
+            setEnviando(false);
+        }
     }
-
-    const inicio = new Date(dataInicial);
-    const agora = new Date();
-
-    const diferenca = agora - inicio;
-
-    if (diferenca < 0) {
-        return "0min";
-    }
-
-    const minutosTotais = Math.floor(
-        diferenca / 1000 / 60
-    );
-
-    const dias = Math.floor(
-        minutosTotais / 1440
-    );
-
-    const horas = Math.floor(
-        (minutosTotais % 1440) / 60
-    );
-
-    const minutos =
-        minutosTotais % 60;
-
-    if (dias > 0) {
-
-        return `${dias}d ${horas}h ${minutos}min`;
-
-    }
-
-    if (horas > 0) {
-
-        return `${horas}h ${minutos}min`;
-
-    }
-
-    return `${minutos}min`;
-
-}
-
-
-export default function LocalizaCard({
-
-    solicitacao,
-
-    onConcluir
-
-}) {
-
-    const [agora, setAgora] = useState(
-        new Date()
-    );
-
-
-    useEffect(() => {
-
-        const intervalo = setInterval(() => {
-
-            setAgora(new Date());
-
-        }, 60000);
-
-
-        return () => {
-
-            clearInterval(intervalo);
-
-        };
-
-    }, []);
-
-
-    const tempoDecorrido =
-        formatarTempoDecorrido(
-            solicitacao.recebida_em
-        );
-
 
     return (
-
-        <div
-            className="
-                bg-white
-                rounded-2xl
-                border
-                border-slate-200
-                shadow
-                p-5
-            "
-        >
-
-            <div className="flex justify-between items-start">
-
+        <article className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-
-                    <h2 className="text-3xl font-black">
-
-                        {solicitacao.placa}
-
-                    </h2>
-
-                    <p className="text-sm text-slate-500">
-
-                        Solicitação #
-
-                        {solicitacao.numero_solicitacao}
-
+                    <h3 className="text-2xl font-extrabold tracking-wider text-slate-900">{solicitacao.placa}</h3>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                        {solicitacao.numero_solicitacao ? `Solicitação #${solicitacao.numero_solicitacao}` : "Lavagem Localiza"}
                     </p>
-
-                    <p className="text-sm text-slate-500 mt-1">
-
-                        {solicitacao.loja}
-
-                    </p>
-
                 </div>
-
-                <span
-                    className="
-                        px-3
-                        py-1
-                        rounded-full
-                        bg-blue-100
-                        text-blue-700
-                        text-xs
-                        font-semibold
-                    "
-                >
-
-                    Localiza
-
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                    {rotulosStatus[solicitacao.status] || "Em operação"}
                 </span>
-
             </div>
 
-            <div className="mt-4 flex items-center gap-2 text-sm">
-
-                <span className="font-semibold text-slate-700">
-                    ⏱️ Aberto há:
-                </span>
-
-                <span className="font-bold text-blue-600">
-
-                    <TempoOperacao
-                        inicio={solicitacao.recebida_em}
-                        aoVivo={true}
-                    />
-
-                </span>
-
+            <div className="mt-4 space-y-2 text-sm text-slate-600">
+                {solicitacao.loja && (
+                    <div className="flex items-center gap-2">
+                        <MapPin size={15} className="shrink-0 text-slate-400" />
+                        {typeof solicitacao.loja === "string" ? solicitacao.loja : solicitacao.loja.nome || solicitacao.loja.codigo}
+                    </div>
+                )}
+                <div className="flex flex-wrap gap-x-2">
+                    <span className="font-medium text-slate-500">Tipo:</span>
+                    <span className="font-semibold text-slate-800">{solicitacao.tipo_lavagem || "Não informado"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-2">
+                    <span className="font-medium text-slate-500">Fornecedor:</span>
+                    <span className="text-slate-700">{solicitacao.fornecedor || "Não informado"}</span>
+                </div>
+                <div className="flex flex-wrap gap-x-2">
+                    <span className="font-medium text-slate-500">Responsável:</span>
+                    <span className="text-slate-700">{solicitacao.responsavel_localiza || "Não informado"}</span>
+                </div>
             </div>
 
-
-            <div className="mt-5 space-y-2 text-sm">
-
-                <div>
-
-                    <strong>Tipo:</strong>
-
-                    {" "}
-
-                    {solicitacao.tipo_lavagem}
-
-                </div>
-
-
-                <div>
-
-                    <strong>Fornecedor:</strong>
-
-                    {" "}
-
-                    {solicitacao.fornecedor}
-
-                </div>
-
-
-                <div>
-
-                    <strong>Responsável:</strong>
-
-                    {" "}
-
-                    {solicitacao.responsavel_localiza}
-
-                </div>
-
-
-                <div>
-
-                    <strong>Aberto há:</strong>
-
-                    {" "}
-
-                    <span className="font-semibold text-orange-600">
-
-                        {tempoDecorrido}
-
-                    </span>
-
-                </div>
-
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5 text-sm">
+                <span className="flex items-center gap-1.5 text-slate-500"><Clock3 size={15} /> Aberto há</span>
+                <strong className="text-slate-800">
+                    <TempoOperacao inicio={solicitacao.recebida_em} aoVivo />
+                </strong>
             </div>
 
-
-            <button
-
-                onClick={() => onConcluir(solicitacao)}
-
-                className="
-                    w-full
-                    mt-6
-                    rounded-xl
-                    bg-green-600
-                    hover:bg-green-700
-                    text-white
-                    py-3
-                    font-semibold
-                "
-
-            >
-
-                Concluir
-
+            <button type="button" onClick={concluir} disabled={enviando}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">
+                <Check size={18} /> {enviando ? "Concluindo..." : "Concluir lavagem"}
             </button>
-
-        </div>
-
+        </article>
     );
-
 }

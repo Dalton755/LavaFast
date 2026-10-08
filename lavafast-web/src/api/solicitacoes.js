@@ -201,3 +201,16 @@ export async function obterResumoSolicitacoesConcluidas(
     return data;
 }
 
+
+export async function consultarPlacaConcluida(placa, lojas, signal) {
+    const { data } = await api.get("/solicitacoes/consulta-placa", {
+        params: { placa, lojas },
+        signal
+    });
+    return data;
+}
+
+export async function reabrirSolicitacao(id) {
+    const { data } = await api.put(`/solicitacoes/${id}/reabrir`);
+    return data;
+}

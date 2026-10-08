@@ -67,7 +67,8 @@ export default function useOperacaoSimplificada() {
 
         );
 
-        carregar();
+        // Atualiza somente o item alterado, sem recarregar todos os cards.
+        setLocaliza(atual => atual.filter(item => item.id !== solicitacao.id));
 
     }
 
