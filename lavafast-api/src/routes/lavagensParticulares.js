@@ -1,6 +1,6 @@
 import { Router } from "express";
 import LavagemParticularController from "../controllers/LavagemParticularController.js";
-import { autenticar } from "../middleware/authMiddleware.js";
+import { autenticar, autorizarFuncionario } from "../middleware/authMiddleware.js";
 
 const router = Router();
 
@@ -14,7 +14,7 @@ router.post(
     LavagemParticularController.criar
 );
 
-router.put("/:id/reabrir", autenticar, LavagemParticularController.reabrir);
+router.put("/:id/reabrir", autenticar, autorizarFuncionario, LavagemParticularController.reabrir);
 
 router.put(
     "/:id/concluir",

@@ -1,4 +1,5 @@
 ﻿import supabase from "../config/supabase.js";
+import AuthService from "../services/AuthService.js";
 
 export async function autenticar(req, res, next) {
 
@@ -65,4 +66,19 @@ export async function autenticar(req, res, next) {
 
     }
 
+}
+
+/**
+ * Autoriza somente funcionários ativos reconhecidos pelo cadastro do LavaFast.
+ * O JWT, isoladamente, não garante vínculo com uma loja ou funcionário.
+ */
+export async function autorizarFuncionario(req, res, next) {
+    try {
+        req.funcionario = await AuthService.obterPerfil(req.usuario);
+        next();
+    } catch (error) {
+        return res.status(403).json({
+            erro: "Seu usuário não possui acesso operacional ativo."
+        });
+    }
 }
