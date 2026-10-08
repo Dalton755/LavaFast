@@ -34,8 +34,7 @@ class SolicitacaoController {
     async consultarPlaca(req, res) {
         try {
             const resultado = await SolicitacaoService.consultarPlaca(
-                req.query.placa,
-                req.query.lojas
+                req.query.placa
             );
             return res.json(resultado);
         } catch (error) {
