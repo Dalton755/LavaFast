@@ -1,4 +1,5 @@
 import MainLayout from "../../layouts/MainLayout";
+import { useLoja } from "../../context/LojaContext";
 import ReabrirLavagemModal from "../../components/operation-simple/ReabrirLavagemModal";
 import { reabrirSolicitacao } from "../../api/solicitacoes";
 import { reabrirLavagemParticular } from "../../api/lavagensParticulares";
@@ -53,6 +54,7 @@ export default function CompletedOperation({
     usuario
 }) {
 
+    const { lojasSelecionadas, selecionarLojas } = useLoja();
     const [placa, setPlaca] = useState("");
     const [dataInicial, setDataInicial] = useState("");
     const [dataFinal, setDataFinal] = useState("");
@@ -91,9 +93,16 @@ export default function CompletedOperation({
             } else {
                 await reabrirLavagemParticular(reabrirItem.id);
             }
+            const lojaReaberta = reabrirItem.origem === "LOCALIZA" ? reabrirItem.loja_id : null;
+            const incluirLoja = lojaReaberta && !lojasSelecionadas.includes(lojaReaberta);
+            if (incluirLoja) {
+                selecionarLojas([...lojasSelecionadas, lojaReaberta]);
+            }
             setReabrirItem(null);
             await recarregar();
-            toast.success("Lavagem devolvida à operação.");
+            toast.success(incluirLoja
+                ? "Lavagem devolvida à operação. Loja incluída no filtro."
+                : "Lavagem devolvida à operação.");
         } catch (erro) {
             toast.error(erro.response?.data?.erro || "Não foi possível reabrir a lavagem.");
         } finally {
