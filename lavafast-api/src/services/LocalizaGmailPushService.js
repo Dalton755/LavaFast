@@ -19,6 +19,10 @@ import STATUS from '../constants/status.js';
 const LABEL_NAME = process.env.GMAIL_LOCALIZA_LABEL || 'LOCALIZA_LAVAGEM';
 
 function valorParaNumero(valor) {
+    if (!String(valor || '').trim()) {
+        throw new Error('Valor da lavagem ausente no e-mail da Localiza.');
+    }
+
     const numero = Number(
         String(valor || '')
             .replace(/R\$/gi, '')
