@@ -32,6 +32,32 @@ async function executarRecuperacao() {
             return;
         }
 
+        const placas = [...new Set(String(process.env.GMAIL_RECOVERY_PLATES || '')
+            .split(',')
+            .map(placa => placa.trim().toUpperCase())
+            .filter(placa => /^[A-Z0-9]{7}$/.test(placa)))];
+
+        if (placas.length) {
+            const { data: existentes, error } = await supabase
+                .schema('operacoes')
+                .from('solicitacoes_lavagem')
+                .select('placa')
+                .in('placa', placas);
+
+            if (error) throw error;
+
+            const jaCadastradas = new Set((existentes || []).map(item => item.placa));
+            const faltantes = placas.filter(placa => !jaCadastradas.has(placa));
+
+            if (faltantes.length) {
+                const resposta = await LocalizaGmailPushService.reconciliarPlacas(faltantes);
+                console.log('[GmailRecovery] Busca prioritaria:', {
+                    faltantes,
+                    ...resposta
+                });
+            }
+        }
+
         const resultado = await LocalizaGmailPushService.reconciliarRecentes();
         console.log('[GmailRecovery] Resultado:', resultado);
 
