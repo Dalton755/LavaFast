@@ -6,6 +6,7 @@ import supabase from '../config/supabase.js';
 
 const MEIA_HORA = 30 * 60 * 1000;
 let executando = false;
+let retentativaAgendada = null;
 
 // Somente a API principal, com GMAIL_RECOVERY_ENABLED=true, executa a
 // varredura de seguranca. As outras instancias nao consultam o Gmail.
@@ -29,6 +30,16 @@ async function executarRecuperacao() {
 
         if (retentarEm && Date.now() < retentarEm + 30_000) {
             console.warn('[GmailRecovery] Gmail limitado; aguardando janela de retentativa.');
+
+            // Apos o desbloqueio, tente de novo sem esperar a proxima meia hora.
+            if (!retentativaAgendada) {
+                const atraso = Math.max(60_000, retentarEm + 45_000 - Date.now());
+                retentativaAgendada = setTimeout(() => {
+                    retentativaAgendada = null;
+                    executarRecuperacao();
+                }, atraso);
+                retentativaAgendada.unref?.();
+            }
             return;
         }
 
