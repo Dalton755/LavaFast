@@ -243,6 +243,56 @@ class LocalizaGmailPushService {
         };
     }
 
+    async reconciliarPlacas(placas = []) {
+        const placasValidas = [...new Set(placas.map(placa =>
+            String(placa || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+        ))].filter(placa => /^[A-Z0-9]{7}$/.test(placa)).slice(0, 10);
+
+        if (!placasValidas.length) return { encontrados: 0, importados: 0 };
+
+        const estado = await GmailSyncRepository.obter();
+        const retentarEm = proximaTentativaGmail(estado?.last_error);
+        if (retentarEm && Date.now() < retentarEm + 30_000) {
+            throw new Error(`GMAIL_BACKOFF: Retry after ${new Date(retentarEm).toISOString()}`);
+        }
+
+        const termos = placasValidas.map(placa => `"${placa}"`).join(' ');
+        const query = `from:no-reply@localiza.com {${termos}} newer_than:7d`;
+        const mensagens = await listarEmails({ query, limite: 30 });
+        const statusPorId = await ImportacaoEmailRepository.listarStatusPorMessageIds(
+            mensagens.map(item => item.id)
+        );
+        const finalizados = new Set(['PROCESSADO', 'SUCESSO', 'IMPORTADO', 'DUPLICADO']);
+
+        let importados = 0;
+        let processados = 0;
+        let erros = 0;
+
+        for (const mensagem of mensagens) {
+            if (finalizados.has(statusPorId.get(mensagem.id))) continue;
+
+            try {
+                const resultado = await this.processarMensagem(mensagem.id);
+                importados += resultado.importados || 0;
+                processados++;
+            } catch (erro) {
+                erros++;
+                if (erroLimiteGmail(erro)) {
+                    await GmailSyncRepository.registrarErro(erro);
+                    throw erro;
+                }
+                console.error('[GmailRecovery][Placa]', mensagem.id, erro.message);
+            }
+        }
+
+        return {
+            encontrados: mensagens.length,
+            processados,
+            importados,
+            erros
+        };
+    }
+
     async reconciliarRecentes() {
         // Checa o limite ANTES da chamada Gmail, inclusive quando o Pub/Sub
         // continuar tentando entregar a mesma notificacao.
