@@ -1,6 +1,7 @@
 import app from './app.js';
 import { iniciarSchedulers } from "./scheduler/index.js";
 import GmailLabelService from "./services/gmail/GmailLabelService.js";
+import { iniciarGmailRecoveryScheduler } from "./scheduler/GmailRecoveryScheduler.js";
 
 const PORT = process.env.PORT || 3000;
 
@@ -14,6 +15,8 @@ app.listen(PORT, "0.0.0.0", async () => {
     console.log("===================================");
     console.log("");
     const inicioServidor = Date.now();
+
+    iniciarGmailRecoveryScheduler();
 
    // await GmailLabelService.inicializar();
 
