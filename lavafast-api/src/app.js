@@ -35,6 +35,15 @@ app.use(
     produtividadeRoutes
 );
 
+// Endpoint leve para monitoramento sem autenticacao e sem expor segredos.
+app.get("/api/health", (_req, res) => {
+    res.json({
+        status: "ONLINE",
+        servico: "lavafast-api",
+        horario: new Date().toISOString()
+    });
+});
+
 app.get('/', (req, res) => {
 
     res.json({
