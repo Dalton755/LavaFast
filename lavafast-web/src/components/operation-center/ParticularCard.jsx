@@ -29,8 +29,8 @@ export default function ParticularCard({ lavagem, onConcluir }) {
 
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div>
-                    <p className="text-xs text-slate-500">Lavador</p>
-                    <p className="mt-1 font-semibold text-slate-800">{lavagem.lavador || "Não informado"}</p>
+                    <p className="text-xs text-slate-500">Responsável</p>
+                    <p className="mt-1 font-semibold text-slate-800">{lavagem.responsavel || lavagem.lavador || "Não informado"}</p>
                 </div>
                 <div>
                     <p className="text-xs text-slate-500">Pagamento</p>
