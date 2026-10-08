@@ -96,16 +96,15 @@ class SolicitacaoRepository {
     }
 
 
-    // Busca leve por prefixo de placa; evita varrer o histórico na tela operacional.
-    async buscarFinalizadasPorPlaca(placa, lojas = []) {
-        if (!lojas.length) return [];
+    // Busca concluídas em todas as lojas: o filtro operacional de lojas
+    // só deve limitar os cards ativos, não ocultar o histórico da placa.
+    async buscarFinalizadasPorPlaca(placa) {
 
         let consulta = supabase
             .schema("operacoes")
             .from("solicitacoes_lavagem")
-            .select("id, placa, status, numero_solicitacao, recebida_em, finalizada_em, fornecedor, responsavel_localiza, loja:lojas(nome,codigo)")
-            .eq("status", "FINALIZADA")
-            .in("loja_id", lojas);
+            .select("id, placa, loja_id, status, numero_solicitacao, recebida_em, finalizada_em, fornecedor, responsavel_localiza, loja:lojas(nome,codigo)")
+            .eq("status", "FINALIZADA");
 
         consulta = placa.length === 7
             ? consulta.eq("placa", placa)
