@@ -1,311 +1,119 @@
-import { Building2, User } from 'lucide-react';
+import { useEffect, useRef, useState } from "react";
+import { Building2, ChevronDown, LogOut, UserRound } from "lucide-react";
 import BRAND from "../../config/branding";
 import { useLoja } from "../../context/LojaContext";
 import { useAuth } from "../../context/AuthContext";
-import { useState } from "react";
 import FiltroLojas from "../common/FiltroLojas";
 
 export default function Header() {
-
     const { usuario, logout } = useAuth();
-
-    const [abrirFiltro, setAbrirFiltro] = useState(false);
-    const [abrirUsuario, setAbrirUsuario] = useState(false);
-
-    const {
-
-        lojas,
-
-        loja,
-
-        selecionar
-
-    } = useLoja();
-
-
-    return (
-
-        <header
-            className="
-            h-20
-            bg-white/90
-            backdrop-blur-md
-            border-b
-            border-slate-200
-            shadow-sm
-            sticky
-            top-0
-            z-50
-            "
-        >
-
-            <div
-                className="
-                max-w-7xl
-                mx-auto
-                h-full
-                px-8
-                flex
-                items-center
-                justify-between
-                "
-            >
-
-                <div className="flex items-center gap-3">
-
-                    <div
-                        className="
-                        w-12
-                        h-12
-                        rounded-2xl
-                        bg-white
-                        shadow-md
-                        border
-                        border-slate-200
-                        flex
-                        items-center
-                        justify-center
-                        overflow-hidden
-                        "
-                    >
-
-                        <img
-
-                            src={BRAND.logo}
-
-                            alt={BRAND.nome}
-
-                            className="w-10 h-10 object-contain"
-
-                        />
-
-                    </div>
-
-                    <div>
-
-                        <h1 className="text-xl font-bold text-slate-800">
-
-                            {BRAND.nome}
-
-                        </h1>
-
-                        <p className="text-xs text-slate-500">
-
-                            {BRAND.subtitulo}
-
-                        </p>
-
-                    </div>
-
-                </div>
-
-                <div className="relative">
-
-                    <button
-
-                        onClick={() => setAbrirFiltro(!abrirFiltro)}
-
-                        className="
-                            flex
-                            items-center
-                            gap-3
-                            px-5
-                            py-3
-                            rounded-2xl
-                            bg-slate-50
-                            border
-                            border-slate-200
-                            hover:border-amber-400
-                            transition-all
-                            duration-200
-                        "
-
-                    >
-
-                        <Building2
-
-                            size={18}
-
-                            className="text-slate-500"
-
-                        />
-
-                        <span className="text-sm font-medium">
-
-                            Lojas
-
-                        </span>
-
-                    </button>
-
-                    {
-
-                        abrirFiltro && (
-
-                            <div
-
-                                className="
-                                    fixed
-                                    top-20
-                                    left-4
-                                    right-4
-                                    z-[9999]
-                                "
-
-                            >
-
-                                <FiltroLojas
-                                    onChange={() => setAbrirFiltro(false)}
-                                />
-
-                            </div>
-
-                        )
-
-                    }
-
-                </div>
-
-                <div className="relative">
-
-                    <button
-                        onClick={() =>
-                            setAbrirUsuario(valor => !valor)
-                        }
-                        className="
-            flex
-            items-center
-            gap-3
-            px-3
-            py-2
-            rounded-2xl
-            hover:bg-slate-50
-            transition
-        "
-                    >
-
-                        <div
-                            className="
-                w-11
-                h-11
-                rounded-full
-                bg-gradient-to-br
-                from-slate-100
-                to-slate-200
-                flex
-                items-center
-                justify-center
-                shadow-sm
-            "
-                        >
-
-                            <User size={18} />
-
-                        </div>
-
-                        <span className="text-sm font-medium">
-
-                            {usuario?.nome || "Usuário"}
-
-                        </span>
-
-                    </button>
-
-                    {abrirUsuario && (
-
-                        <div
-                            className="
-                absolute
-                right-0
-                top-14
-                w-64
-                bg-white
-                border
-                border-slate-200
-                rounded-2xl
-                shadow-xl
-                p-2
-                z-[9999]
-            "
-                        >
-
-                            <div className="px-3 py-3">
-
-                                <p className="
-                    text-sm
-                    font-semibold
-                    text-slate-800
-                ">
-
-                                    {usuario?.nome || "Usuário"}
-
-                                </p>
-
-                                <p className="
-                    text-xs
-                    text-slate-500
-                    mt-1
-                    truncate
-                ">
-
-                                    {usuario?.email || ""}
-
-                                </p>
-
-                                <p className="
-                    text-xs
-                    text-slate-400
-                    mt-1
-                ">
-
-                                    {usuario?.cargo || ""}
-
-                                </p>
-
-                            </div>
-
-                            <div className="
-                border-t
-                border-slate-100
-                my-1
-            " />
-
-                            <button
-                                onClick={async () => {
-
-                                    setAbrirUsuario(false);
-
-                                    await logout();
-
-                                }}
-                                className="
-                    w-full
-                    text-left
-                    px-3
-                    py-2.5
-                    rounded-xl
-                    text-sm
-                    font-semibold
-                    text-red-600
-                    hover:bg-red-50
-                    transition
-                "
-                            >
-
-                                Sair
-
-                            </button>
-
-                        </div>
-
-                    )}
-
-                </div>
-
-            </div>
-
-        </header>
-
+    const { lojas, lojasSelecionadas } = useLoja();
+    const [menuAberto, setMenuAberto] = useState(null);
+    const areaMenus = useRef(null);
+
+    useEffect(() => {
+        function fecharAoClicarFora(event) {
+            if (!areaMenus.current?.contains(event.target)) setMenuAberto(null);
+        }
+        function fecharComEscape(event) {
+            if (event.key === "Escape") setMenuAberto(null);
+        }
+        document.addEventListener("pointerdown", fecharAoClicarFora);
+        document.addEventListener("keydown", fecharComEscape);
+        return () => {
+            document.removeEventListener("pointerdown", fecharAoClicarFora);
+            document.removeEventListener("keydown", fecharComEscape);
+        };
+    }, []);
+
+    const nomeLojaUnica = lojasSelecionadas.length === 1
+        ? lojas.find(loja => loja.id === lojasSelecionadas[0])?.nome
+        : null;
+    const legendaLojas = nomeLojaUnica || (
+        lojasSelecionadas.length === 0
+            ? "Selecionar lojas"
+            : `${lojasSelecionadas.length} lojas`
     );
 
+    function alternarMenu(menu) {
+        setMenuAberto(atual => atual === menu ? null : menu);
+    }
+
+    return (
+        <header className="lf-header">
+            <div className="lf-header__inner">
+                <div className="lf-header__brand">
+                    <div className="lf-header__logo">
+                        <img src={BRAND.logo} alt="" />
+                    </div>
+                    <div className="min-w-0">
+                        <h1 className="lf-header__title">{BRAND.nome}</h1>
+                        <p className="lf-header__subtitle">{BRAND.subtitulo}</p>
+                    </div>
+                </div>
+
+                <nav ref={areaMenus} aria-label="Configurações da sessão" className="lf-header__actions">
+                    <div className="relative">
+                        <button
+                            type="button"
+                            id="lf-filtro-lojas"
+                            aria-controls="lf-menu-lojas"
+                            aria-expanded={menuAberto === "lojas"}
+                            aria-haspopup="true"
+                            onClick={() => alternarMenu("lojas")}
+                            className="lf-header__control"
+                            title={legendaLojas}
+                        >
+                            <Building2 size={17} className="shrink-0 text-slate-500" />
+                            <span className="lf-header__control-label lf-header__control-label--stores">{legendaLojas}</span>
+                            <ChevronDown size={14} className="lf-header__chevron shrink-0" />
+                        </button>
+                        {menuAberto === "lojas" && (
+                            <div id="lf-menu-lojas" className="lf-popover lf-popover--stores" aria-label="Filtro de lojas">
+                                <FiltroLojas onClose={() => setMenuAberto(null)} />
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="relative">
+                        <button
+                            type="button"
+                            id="lf-botao-usuario"
+                            aria-controls="lf-menu-usuario"
+                            aria-expanded={menuAberto === "usuario"}
+                            aria-haspopup="true"
+                            onClick={() => alternarMenu("usuario")}
+                            className="lf-header__control"
+                            title={`Conta: ${usuario?.nome || "Usuário"}`}
+                        >
+                            <span className="lf-header__avatar"><UserRound size={17} /></span>
+                            <span className="lf-header__control-label lf-header__control-label--user">{usuario?.nome || "Usuário"}</span>
+                            <ChevronDown size={14} className="lf-header__chevron lf-header__chevron--user" />
+                        </button>
+                        {menuAberto === "usuario" && (
+                            <div id="lf-menu-usuario" className="lf-popover" aria-label="Opções de usuário">
+                                <div className="border-b border-slate-100 px-4 py-4">
+                                    <p className="lf-popover__title truncate">{usuario?.nome || "Usuário"}</p>
+                                    {usuario?.email && <p className="lf-popover__subtitle mt-1 break-all">{usuario.email}</p>}
+                                    {usuario?.cargo && <p className="lf-popover__subtitle mt-1">{usuario.cargo}</p>}
+                                </div>
+                                <div className="p-2">
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            setMenuAberto(null);
+                                            await logout();
+                                        }}
+                                        className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+                                    >
+                                        <LogOut size={16} /> Sair da conta
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </nav>
+            </div>
+        </header>
+    );
 }
