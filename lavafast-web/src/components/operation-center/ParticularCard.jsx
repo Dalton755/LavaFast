@@ -14,40 +14,49 @@ export default function ParticularCard({ lavagem, onConcluir }) {
         try {
             await onConcluir(lavagem.id);
         } catch {
-            // O painel mostra o erro e preserva o card para uma nova tentativa.
+            // O painel mantém o erro visível e preserva o card para nova tentativa.
         } finally {
             setEnviando(false);
         }
     }
 
+    const tipoLavagem = lavagem.tipo_lavagem || lavagem.tipo_lavagem_nome || lavagem.tipo?.nome || "Não informado";
+    const responsavel = lavagem.responsavel || lavagem.lavador || "Não informado";
+
     return (
-        <article className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-2xl font-extrabold tracking-wider text-slate-900">{lavagem.placa}</h3>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">Em lavagem</span>
+        <article className="lf-card">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="lf-card__eyebrow">Veículo • Particular</p>
+                    <h3 className="lf-plate mt-1 break-all">{lavagem.placa}</h3>
+                </div>
+                <span className="lf-badge lf-badge--blue">Em lavagem</span>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div>
-                    <p className="text-xs text-slate-500">Responsável</p>
-                    <p className="mt-1 font-semibold text-slate-800">{lavagem.responsavel || lavagem.lavador || "Não informado"}</p>
+            <dl className="lf-info-grid mt-5 border-t border-slate-100 pt-4">
+                <div className="lf-info">
+                    <dt className="lf-info__label">Tipo de lavagem</dt>
+                    <dd className="lf-info__value">{tipoLavagem}</dd>
                 </div>
-                <div>
-                    <p className="text-xs text-slate-500">Pagamento</p>
-                    <p className="mt-1 font-semibold text-slate-800">{lavagem.forma_pagamento || "Não informado"}</p>
+                <div className="lf-info">
+                    <dt className="lf-info__label">Responsável</dt>
+                    <dd className="lf-info__value">{responsavel}</dd>
                 </div>
-                <div>
-                    <p className="text-xs text-slate-500">Valor</p>
-                    <p className="mt-1 font-semibold text-slate-800">{moeda(lavagem.valor)}</p>
+                <div className="lf-info">
+                    <dt className="lf-info__label">Pagamento</dt>
+                    <dd className="lf-info__value">{lavagem.forma_pagamento || "Não informado"}</dd>
                 </div>
-                <div>
-                    <p className="text-xs text-slate-500">Caixinha</p>
-                    <p className="mt-1 font-semibold text-slate-800">{moeda(lavagem.caixinha)}</p>
+                <div className="lf-info">
+                    <dt className="lf-info__label">Valor</dt>
+                    <dd className="lf-info__value">{moeda(lavagem.valor)}</dd>
                 </div>
-            </div>
+                <div className="lf-info col-span-2">
+                    <dt className="lf-info__label">Caixinha</dt>
+                    <dd className="lf-info__value">{moeda(lavagem.caixinha)}</dd>
+                </div>
+            </dl>
 
-            <button type="button" onClick={concluir} disabled={enviando}
-                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">
+            <button type="button" onClick={concluir} disabled={enviando} aria-busy={enviando} className="lf-action mt-5">
                 <Check size={18} /> {enviando ? "Concluindo..." : "Concluir lavagem"}
             </button>
         </article>
