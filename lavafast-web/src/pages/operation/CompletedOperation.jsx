@@ -818,6 +818,7 @@ export default function CompletedOperation({
     return (
 
         <MainLayout>
+            <div className="lf-report">
 
             {/* CABEÇALHO */}
 
@@ -1660,20 +1661,13 @@ export default function CompletedOperation({
 
                 ) : (
 
-                    <div className="space-y-4">
+                    <div className="lf-record-list space-y-4">
 
                         {resultados.map(item => (
 
                             <div
                                 key={`${item.origem}-${item.id}`}
-                                className="
-                                    border
-                                    border-slate-200
-                                    rounded-2xl
-                                    p-5
-                                    hover:shadow-md
-                                    transition
-                                "
+                                className="lf-record-card border border-slate-200 rounded-2xl p-5 hover:shadow-md transition"
                             >
 
                                 <div className="
@@ -2079,6 +2073,7 @@ export default function CompletedOperation({
                 confirmar={confirmarReabertura}
                 cancelar={() => setReabrirItem(null)}
             />
+                    </div>
         </MainLayout>
 
     );

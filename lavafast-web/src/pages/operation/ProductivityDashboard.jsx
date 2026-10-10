@@ -53,7 +53,7 @@ function CardProdutividade({
         <button
             type="button"
             onClick={onClick}
-            className="
+            className="lf-metric-card
                 text-left
                 bg-white
                 border
@@ -395,6 +395,7 @@ export default function ProductivityDashboard({
     return (
 
         <MainLayout>
+            <div className="lf-analytics">
 
             <div
                 className="
@@ -526,7 +527,7 @@ export default function ProductivityDashboard({
 
                                 <label
                                     key={loja.id}
-                                    className="
+                                    className="lf-store-chip
                                         flex
                                         items-center
                                         gap-2
@@ -724,6 +725,7 @@ export default function ProductivityDashboard({
 
             </div>
 
+                    </div>
         </MainLayout>
 
     );

@@ -92,17 +92,17 @@ export default function NovaLocalizaModal({
 
     return (
 
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="lf-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-4">
 
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="lf-modal-panel w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="lf-nova-localiza">
 
-                <h2 className="text-2xl font-bold mb-6">
+                <h2 id="lf-nova-localiza" className="lf-modal-title mb-5 text-xl font-bold">
 
                     Nova Solicitação Localiza
 
                 </h2>
 
-                <div>
+                <div className="mb-4">
 
                     <label className="block text-sm font-medium mb-1">
 
@@ -214,18 +214,18 @@ export default function NovaLocalizaModal({
 
                 </div>
 
-                <div className="flex gap-3 mt-6">
+                <div className="lf-modal-actions mt-6 flex gap-3">
 
                     <button
                         onClick={fechar}
-                        className="flex-1 border rounded-xl py-3"
+                        className="lf-modal-secondary flex-1 rounded-xl border py-3"
                     >
                         Cancelar
                     </button>
 
                     <button
                         onClick={salvar}
-                        className="flex-1 bg-blue-600 text-white rounded-xl py-3"
+                        className="lf-modal-primary flex-1 rounded-xl bg-blue-600 py-3 text-white"
                     >
                         Salvar
                     </button>

@@ -361,6 +361,7 @@ export default function ProductivityDetails({
     return (
 
         <MainLayout>
+            <div className="lf-details">
 
             <div
                 className="
@@ -715,6 +716,7 @@ export default function ProductivityDetails({
 
             </div>
 
+                    </div>
         </MainLayout>
 
     );

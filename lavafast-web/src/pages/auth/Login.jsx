@@ -423,7 +423,7 @@ export default function Login() {
 
     return (
 
-        <main className="
+        <main className="lf-login 
             min-h-screen
             bg-slate-100
             flex
