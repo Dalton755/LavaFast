@@ -607,6 +607,7 @@ class SolicitacaoService {
         }
 
         const filtrosBanco = {
+            dataConclusao: Boolean(filtros.dataConclusao),
             placa,
             dataInicial,
             dataFinal,
