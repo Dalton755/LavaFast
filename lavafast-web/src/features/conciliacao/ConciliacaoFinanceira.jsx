@@ -53,12 +53,12 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
     setErro("");
     setResultado(null);
     try {
-      // Endpoint de exportação já existente, com autenticação e permissão no backend.
+      // Consulta protegida por perfil financeiro no backend.
       const { data: relatorio } = await api.get("/solicitacoes/conciliacao/concluidas", { params: {
         dataInicial: periodo.inicio, dataFinal: periodo.fim, origem: "LOCALIZA"
       }});
       if (!Array.isArray(relatorio?.dados)) throw new Error("O histórico não retornou uma lista válida.");
-      const concluidas = relatorio.dados.filter(item => nomeLoja(item.loja?.nome ?? item.loja ?? "") === loja);
+      const concluidas = relatorio.dados.filter(item => nomeLoja(item.loja?.nome ?? item.loja?.codigo ?? item.loja ?? "") === loja);
       setResultado({ ...conciliarLavagens({ concluidas, pagamentos: importacao.pagamentos, loja, ...periodo }), chave: chave(loja) });
     } catch (e) {
       setErro(e.response?.data?.erro || e.message || "Não foi possível consultar o histórico.");
