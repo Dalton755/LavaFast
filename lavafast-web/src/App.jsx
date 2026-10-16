@@ -3,6 +3,7 @@ import { useState } from "react";
 import SimplifiedOperation from "./pages/operation/SimplifiedOperation";
 import CompletedOperation from "./pages/operation/CompletedOperation";
 import Login from "./pages/auth/Login";
+import ConciliacaoFinanceira from "./features/conciliacao/ConciliacaoFinanceira";
 import ProductivityDashboard
     from "./pages/operation/ProductivityDashboard";
 import ProductivityDetails
@@ -23,6 +24,10 @@ function Sistema() {
         detalheProdutividade,
         setDetalheProdutividade
     ] = useState(null);
+
+    function abrirConciliacao() {
+        if (usuario?.podeVerValores) setPagina("CONCILIACAO");
+    }
 
     function abrirRelatorio() {
 
@@ -59,9 +64,14 @@ function Sistema() {
                 <SimplifiedOperation
                     abrirConcluidos={abrirRelatorio}
                     abrirProdutividade={abrirProdutividade}
+                    abrirConciliacao={abrirConciliacao}
                     usuario={usuario}
                 />
 
+            )}
+
+            {pagina === "CONCILIACAO" && usuario?.podeVerValores && (
+                <ConciliacaoFinanceira voltar={() => setPagina("OPERACAO")} usuario={usuario} />
             )}
 
             {pagina === "CONCLUIDOS" && (
