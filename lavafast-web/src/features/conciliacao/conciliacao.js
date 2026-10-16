@@ -5,9 +5,9 @@ export const LOJAS_CONCILIACAO = {
   CENTRAL_PLAZA: ["centralplaza", "central plaza"],
 };
 
-export const normalizarSL = valor => String(valor ?? "").trim().replace(/\\.0$/, "").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
+export const normalizarSL = valor => String(valor ?? "").trim().replace(/\.0$/, "").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
 export const normalizarPlaca = valor => String(valor ?? "").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
-const normalizarTexto = valor => String(valor ?? "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+const normalizarTexto = valor => String(valor ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
 export const nomeLoja = nome => Object.entries(LOJAS_CONCILIACAO).find(([, aliases]) => aliases.some(a => normalizarTexto(a) === normalizarTexto(nome)))?.[0] ?? null;
 
 function linhasDaAba(aba) {
@@ -19,7 +19,7 @@ function linhasDaAba(aba) {
       placa: normalizarPlaca(campo("placa")),
       tipoLavagem: String(campo("tipolavagem", "lavagem")).trim(),
       dataAbertura: campo("dataabertura"),
-      valor: Number(String(campo("valor")).replace(/[^0-9,.-]/g, "").replace(/\\./g, "").replace(",", ".")) || 0,
+      valor: Number(String(campo("valor")).replace(/[^0-9,.-]/g, "").replace(/\./g, "").replace(",", ".")) || 0,
     };
   }).filter(item => item.sl);
 }
