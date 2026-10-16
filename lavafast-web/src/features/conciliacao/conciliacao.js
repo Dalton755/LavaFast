@@ -56,7 +56,7 @@ export function conciliarLavagens({ concluidas, pagamentos, loja, inicio, fim })
   }
   const linhas = concluidas.filter(item => {
     const data = String(item.finalizada_em ?? item.dataConclusao ?? "").slice(0, 10);
-    return data >= inicio && data <= fim && nomeLoja(item.loja?.nome ?? item.loja ?? "") === loja && (item.origem ?? "LOCALIZA") === "LOCALIZA";
+    return data >= inicio && data <= fim && nomeLoja(item.loja?.nome ?? item.loja?.codigo ?? item.loja ?? "") === loja && (item.origem ?? "LOCALIZA") === "LOCALIZA";
   }).map(item => {
     const sl = normalizarSL(item.numero_solicitacao ?? item.sl);
     const pagamento = indice.get(sl);
