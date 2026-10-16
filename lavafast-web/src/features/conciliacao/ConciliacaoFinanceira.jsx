@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { ArrowLeft, FileSpreadsheet, Search, Download } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
-import { listarSolicitacoesConcluidasExportacao } from "../../api/solicitacoes";
+import api from "../../api/axios";
 import { lerPlanilhaPagamento, periodoQuinzena, conciliarLavagens, nomeLoja } from "./conciliacao";
 
 const LABELS = { MOOCA: "Mooca", CENTRAL_PLAZA: "Central Plaza" };
@@ -54,9 +54,9 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
     setResultado(null);
     try {
       // Endpoint de exportação já existente, com autenticação e permissão no backend.
-      const relatorio = await listarSolicitacoesConcluidasExportacao({
+      const { data: relatorio } = await api.get("/solicitacoes/conciliacao/concluidas", { params: {
         dataInicial: periodo.inicio, dataFinal: periodo.fim, origem: "LOCALIZA"
-      });
+      }});
       if (!Array.isArray(relatorio?.dados)) throw new Error("O histórico não retornou uma lista válida.");
       const concluidas = relatorio.dados.filter(item => nomeLoja(item.loja?.nome ?? item.loja ?? "") === loja);
       setResultado({ ...conciliarLavagens({ concluidas, pagamentos: importacao.pagamentos, loja, ...periodo }), chave: chave(loja) });
