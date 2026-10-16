@@ -82,3 +82,11 @@ export async function autorizarFuncionario(req, res, next) {
         });
     }
 }
+
+/** Restringe relatórios financeiros ao perfil cadastrado no servidor. */
+export function autorizarFinanceiro(req, res, next) {
+    if (!req.funcionario?.podeVerValores) {
+        return res.status(403).json({ erro: "Acesso financeiro não autorizado." });
+    }
+    next();
+}
