@@ -8,7 +8,7 @@ export const LOJAS_CONCILIACAO = {
 export const normalizarSL = valor => String(valor ?? "").trim().replace(/\\.0$/, "").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
 export const normalizarPlaca = valor => String(valor ?? "").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
 const normalizarTexto = valor => String(valor ?? "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
-const nomeLoja = nome => Object.entries(LOJAS_CONCILIACAO).find(([, aliases]) => aliases.some(a => normalizarTexto(a) === normalizarTexto(nome)))?.[0] ?? null;
+export const nomeLoja = nome => Object.entries(LOJAS_CONCILIACAO).find(([, aliases]) => aliases.some(a => normalizarTexto(a) === normalizarTexto(nome)))?.[0] ?? null;
 
 function linhasDaAba(aba) {
   const linhas = XLSX.utils.sheet_to_json(aba, { defval: "", raw: false });
