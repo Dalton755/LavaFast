@@ -61,7 +61,7 @@ export function conciliarLavagens({ concluidas, pagamentos, loja, inicio, fim })
     const sl = normalizarSL(item.numero_solicitacao ?? item.sl);
     const pagamento = indice.get(sl);
     const placa = normalizarPlaca(item.placa);
-    const divergencia = pagamento && placa && pagamento.placa && placa !== pagamento.placa;
+    const divergencia = Boolean(pagamento && placa && pagamento.placa && placa !== pagamento.placa);
     return {
       sl, placa, loja, tipoLavagem: item.tipo_lavagem ?? item.tipoLavagem ?? "",
       finalizadaEm: item.finalizada_em ?? item.dataConclusao,
