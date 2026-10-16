@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import SolicitacaoController from '../controllers/SolicitacaoController.js';
-import { autenticar, autorizarFuncionario } from '../middleware/authMiddleware.js';
+import { autenticar, autorizarFuncionario, autorizarFinanceiro } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
@@ -15,6 +15,8 @@ router.get(
 
 router.get('/consulta-placa', autenticar, autorizarFuncionario, SolicitacaoController.consultarPlaca);
 router.put('/:id/reabrir', autenticar, autorizarFuncionario, SolicitacaoController.reabrir);
+
+router.get('/conciliacao/concluidas', autenticar, autorizarFuncionario, autorizarFinanceiro, SolicitacaoController.exportarConcluidas);
 
 router.get(
     '/concluidas',
