@@ -108,7 +108,7 @@ class SolicitacaoController {
     async exportarConciliacao(req, res) {
         try {
             const { dataInicial = "", dataFinal = "" } = req.query;
-            if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dataInicial) || !/^\\d{4}-\\d{2}-\\d{2}$/.test(dataFinal) || dataInicial > dataFinal) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(dataInicial) || !/^\d{4}-\d{2}-\d{2}$/.test(dataFinal) || dataInicial > dataFinal) {
                 return res.status(400).json({ erro: "Período inválido." });
             }
             const resultado = await SolicitacaoService.listarConcluidasExportacao({ dataInicial, dataFinal, origem: "LOCALIZA", dataConclusao: true });
