@@ -27,11 +27,10 @@ function linhasDaAba(aba) {
 export async function lerPlanilhaPagamento(arquivo) {
   const buffer = await arquivo.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
-  const abas = workbook.SheetNames.filter(nome => workbook.Sheets[nome] && workbook.Sheets[nome]["!ref"]);
-  const preferidas = abas.filter(nome => nomeLoja(nome));
-  const selecionadas = preferidas.length ? preferidas : abas;
-  const pagamentos = selecionadas.flatMap(nome => linhasDaAba(workbook.Sheets[nome]));
-  if (!pagamentos.length) throw new Error("A planilha não contém SLs válidas. Confira as colunas SL e PLACA.");
+  const pagamentos = workbook.SheetNames.flatMap(nome => linhasDaAba(workbook.Sheets[nome]));
+  if (!pagamentos.length) {
+    throw new Error(`Nenhuma SL identificada no arquivo. Abas: ${workbook.SheetNames.join(", ")}. Esperado: coluna SL.`);
+  }
   return pagamentos;
 }
 
