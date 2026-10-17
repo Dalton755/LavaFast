@@ -64,7 +64,7 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const { nome, loja, dataInicial, dataFinal, arquivoNome, arquivoBase64, pagamentos, resultado } = req.body || {};
+  const { nome, loja, dataInicial, dataFinal, consultadoEm, arquivoNome, arquivoBase64, pagamentos, resultado } = req.body || {};
   const titulo = typeof nome === "string" ? nome.trim() : "";
   const nomeArquivo = typeof arquivoNome === "string" ? arquivoNome.trim() : "";
   const extensao = nomeArquivo.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
@@ -92,6 +92,11 @@ router.post("/", async (req, res) => {
     : arquivo.subarray(0, 4).toString("hex") === "d0cf11e0";
   if (!formatoValido) return res.status(400).json({ erro: "Formato Excel não reconhecido." });
 
+  // O horário da consulta é enviado ao concluir o cruzamento, não ao salvar.
+  // Limitar divergências de relógio impede datas artificiais no histórico.
+  const horario = Date.parse(consultadoEm);
+  const agora = Date.now();
+  const horarioValido = Number.isFinite(horario) && horario >= agora - 24 * 60 * 60 * 1000 && horario <= agora + 5 * 60 * 1000;
   const id = randomUUID();
   const caminho = req.usuario.id + "/" + id + "/planilha." + extensao;
   try {
@@ -108,6 +113,7 @@ router.post("/", async (req, res) => {
       usuario_nome: req.funcionario.nome,
       usuario_email: req.usuario.email,
       nome_consulta: titulo,
+      consultado_em: horarioValido ? new Date(horario).toISOString() : new Date(agora).toISOString(),
       loja,
       data_inicial: dataInicial,
       data_final: dataFinal,
