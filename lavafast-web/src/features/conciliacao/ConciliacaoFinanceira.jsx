@@ -79,7 +79,7 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
 
   return <MainLayout><div className="mx-auto max-w-7xl space-y-5 pb-12">
     <div className="flex items-center gap-3"><button type="button" onClick={voltar} className="rounded-xl border bg-white p-3" aria-label="Voltar"><ArrowLeft size={20}/></button>
-      <div><h1 className="text-2xl font-bold text-slate-900">Conciliação financeira</h1><p className="text-sm text-slate-500">Localiza · lavagens concluídas x disponibilizadas para pagamento</p></div></div>
+      <div><h1 className="text-2xl font-bold text-slate-900">Conciliação financeira</h1><p className="text-sm text-slate-500">Localiza · lavagens concluídas x disponibilizadas para pagamento · versão 17/10-B</p></div></div>
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
       <div className="grid gap-4 sm:grid-cols-4">
         <label className="text-sm font-semibold">Loja<select className="mt-2 w-full rounded-xl border p-3" value={loja} onChange={e=>{setLoja(e.target.value);setResultado(null)}}>{Object.entries(LABELS).map(([id,nome])=><option key={id} value={id}>{nome}</option>)}</select></label>
