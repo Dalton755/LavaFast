@@ -11,7 +11,7 @@ export default defineConfig({
 
         tailwindcss(),
 
-        VitePWA({
+        ...(process.env.RENDER ? [] : [VitePWA({
 
             registerType: "autoUpdate",
 
@@ -64,7 +64,7 @@ export default defineConfig({
 
             }
 
-        })
+        })])
 
     ]
 
