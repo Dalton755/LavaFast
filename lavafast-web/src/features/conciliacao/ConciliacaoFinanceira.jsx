@@ -37,13 +37,13 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
     setErro("");
     try {
       const dados = await lerPlanilhaPagamento(arquivo);
-      const novas = {};
-      for (const [id, pagamentos] of Object.entries(dados)) {
-        novas[chave(id)] = { pagamentos, arquivo: arquivo.name, nome: `${LABELS[id]} · ${quinzena}ª quinzena · ${String(mes).padStart(2,"0")}/${ano}`, importadoEm: new Date().toISOString() };
-      }
-      setImportacoes(atual => ({ ...atual, ...novas }));
+      const registro = {
+        pagamentos: dados, arquivo: arquivo.name,
+        nome: `${LABELS[loja]} · ${quinzena}ª quinzena · ${String(mes).padStart(2,"0")}/${ano}`,
+        importadoEm: new Date().toISOString()
+      };
+      setImportacoes(atual => ({ ...atual, [chave(loja)]: registro }));
       setResultado(null);
-      if (!dados[loja]) setLoja(Object.keys(dados)[0]);
     } catch (e) { setErro(e.message || "Erro na importação."); }
   }
 
@@ -92,7 +92,7 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
         <button type="button" disabled={!importacao || carregando} onClick={analisar} className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white disabled:opacity-40">{carregando?"Consultando histórico...":"Cruzar com LavaFast"}</button>
         <span className="text-sm text-slate-500">{importacao ? `${importacao.nome} · ${importacao.pagamentos.length} SLs · ${importacao.arquivo}` : "Nenhuma planilha importada para esta loja e quinzena."}</span>
       </div>
-      <p className="mt-3 text-xs text-amber-700">Importações permanecem apenas nesta sessão até a integração de armazenamento seguro. Não são salvas no servidor.</p>
+      <p className="mt-3 text-xs text-amber-700">A loja selecionada acima define a qual unidade a planilha pertence. Importações permanecem apenas nesta sessão até a integração de armazenamento seguro. Não são salvas no servidor.</p>
       {erro && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{erro}</p>}
     </section>
     {resultado && resultado.chave === chave(loja) && <section className="space-y-4">
