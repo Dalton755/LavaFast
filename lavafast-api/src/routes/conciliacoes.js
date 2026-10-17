@@ -97,7 +97,7 @@ router.post("/", async (req, res) => {
   try {
     const { error: erroUpload } = await supabase.storage.from(BUCKET).upload(caminho, arquivo, {
       contentType: EXCEL[extensao],
-      cacheControl: "private, no-store",
+      cacheControl: "0",
       upsert: false,
     });
     if (erroUpload) throw erroUpload;
