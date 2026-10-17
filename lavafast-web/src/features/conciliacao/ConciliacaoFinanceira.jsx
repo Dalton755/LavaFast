@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 import { ArrowLeft, FileSpreadsheet, Search, Download } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
 import api from "../../api/axios";
-import { lerPlanilhaPagamento, periodoQuinzena, conciliarLavagens, nomeLoja } from "./conciliacao";
+import { lerPlanilhaPagamento, conciliarLavagens, nomeLoja } from "./conciliacao";
 
 const LABELS = { MOOCA: "Mooca", CENTRAL_PLAZA: "Central Plaza" };
 const STATUS = { DISPONIVEL: "Disponível", NAO_DISPONIBILIZADA: "Não disponibilizada", DIVERGENCIA: "Divergência", SEM_SL: "Sem SL" };
@@ -11,9 +11,9 @@ const brl = valor => valor == null ? "—" : Number(valor).toLocaleString("pt-BR
 const hoje = new Date();
 
 export default function ConciliacaoFinanceira({ voltar, usuario }) {
-  const [ano, setAno] = useState(hoje.getFullYear());
-  const [mes, setMes] = useState(hoje.getMonth() + 1);
-  const [quinzena, setQuinzena] = useState(hoje.getDate() <= 15 ? 1 : 2);
+  const formatarData = data => [data.getFullYear(), String(data.getMonth()+1).padStart(2,"0"), String(data.getDate()).padStart(2,"0")].join("-");
+  const [dataInicial, setDataInicial] = useState(formatarData(new Date(hoje.getFullYear(), hoje.getMonth(), 1)));
+  const [dataFinal, setDataFinal] = useState(formatarData(hoje));
   const [loja, setLoja] = useState("MOOCA");
   const [importacoes, setImportacoes] = useState({});
   const [resultado, setResultado] = useState(null);
@@ -21,8 +21,9 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
   const [erro, setErro] = useState("");
   const [filtro, setFiltro] = useState("NAO_DISPONIBILIZADA");
   const [busca, setBusca] = useState("");
-  const periodo = periodoQuinzena(ano, mes, quinzena);
-  const chave = id => `${ano}-${String(mes).padStart(2,"0")}-Q${quinzena}-${id}`;
+  const periodo = { inicio: dataInicial, fim: dataFinal };
+  const periodoValido = /^\d{4}-\d{2}-\d{2}$/.test(dataInicial) && /^\d{4}-\d{2}-\d{2}$/.test(dataFinal) && dataInicial <= dataFinal;
+  const chave = id => `${dataInicial}_${dataFinal}_${id}`;
   const importacao = importacoes[chave(loja)];
   const linhas = useMemo(() => (resultado?.linhas ?? []).filter(l =>
     (!filtro || l.status === filtro) && (!busca || [l.sl,l.placa,l.tipoLavagem].some(v => String(v ?? "").toUpperCase().includes(busca.toUpperCase())))
@@ -39,7 +40,7 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
       const dados = await lerPlanilhaPagamento(arquivo);
       const registro = {
         pagamentos: dados, arquivo: arquivo.name,
-        nome: `${LABELS[loja]} · ${quinzena}ª quinzena · ${String(mes).padStart(2,"0")}/${ano}`,
+        nome: `${LABELS[loja]} · ${dataInicial.split("-").reverse().join("/")} a ${dataFinal.split("-").reverse().join("/")}`,
         importadoEm: new Date().toISOString()
       };
       setImportacoes(atual => ({ ...atual, [chave(loja)]: registro }));
@@ -48,7 +49,7 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
   }
 
   async function analisar() {
-    if (!importacao) return;
+    if (!importacao || !periodoValido) { setErro("Informe uma data inicial e final válidas."); return; }
     setCarregando(true);
     setErro("");
     setResultado(null);
@@ -81,16 +82,15 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
     <div className="flex items-center gap-3"><button type="button" onClick={voltar} className="rounded-xl border bg-white p-3" aria-label="Voltar"><ArrowLeft size={20}/></button>
       <div><h1 className="text-2xl font-bold text-slate-900">Conciliação financeira</h1><p className="text-sm text-slate-500">Localiza · lavagens concluídas x disponibilizadas para pagamento · versão 17/10-B</p></div></div>
     <section className="rounded-2xl border bg-white p-5 shadow-sm">
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-3">
         <label className="text-sm font-semibold">Loja<select className="mt-2 w-full rounded-xl border p-3" value={loja} onChange={e=>{setLoja(e.target.value);setResultado(null)}}>{Object.entries(LABELS).map(([id,nome])=><option key={id} value={id}>{nome}</option>)}</select></label>
-        <label className="text-sm font-semibold">Mês<select className="mt-2 w-full rounded-xl border p-3" value={mes} onChange={e=>{setMes(Number(e.target.value));setResultado(null)}}>{Array.from({length:12},(_,i)=><option key={i} value={i+1}>{new Date(2026,i,1).toLocaleDateString("pt-BR",{month:"long"})}</option>)}</select></label>
-        <label className="text-sm font-semibold">Ano<input className="mt-2 w-full rounded-xl border p-3" type="number" min="2020" max="2100" value={ano} onChange={e=>{setAno(Number(e.target.value));setResultado(null)}}/></label>
-        <label className="text-sm font-semibold">Quinzena<select className="mt-2 w-full rounded-xl border p-3" value={quinzena} onChange={e=>{setQuinzena(Number(e.target.value));setResultado(null)}}><option value={1}>1ª · 01 a 15</option><option value={2}>2ª · 16 ao fim do mês</option></select></label>
+        <label className="text-sm font-semibold">Data inicial<input className="mt-2 w-full rounded-xl border p-3" type="date" value={dataInicial} max={dataFinal} onChange={e=>{setDataInicial(e.target.value);setResultado(null)}}/></label>
+        <label className="text-sm font-semibold">Data final<input className="mt-2 w-full rounded-xl border p-3" type="date" value={dataFinal} min={dataInicial} onChange={e=>{setDataFinal(e.target.value);setResultado(null)}}/></label>
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white"><FileSpreadsheet size={18}/> Importar Excel<input type="file" accept=".xlsx,.xls" className="hidden" onChange={importar}/></label>
-        <button type="button" disabled={!importacao || carregando} onClick={analisar} className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white disabled:opacity-40">{carregando?"Consultando histórico...":"Cruzar com LavaFast"}</button>
-        <span className="text-sm text-slate-500">{importacao ? `${importacao.nome} · ${importacao.pagamentos.length} SLs · ${importacao.arquivo}` : "Nenhuma planilha importada para esta loja e quinzena."}</span>
+        <button type="button" disabled={!importacao || !periodoValido || carregando} onClick={analisar} className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white disabled:opacity-40">{carregando?"Consultando histórico...":"Cruzar com LavaFast"}</button>
+        <span className="text-sm text-slate-500">{importacao ? `${importacao.nome} · ${importacao.pagamentos.length} SLs · ${importacao.arquivo}` : "Nenhuma planilha importada para esta loja e período."}</span>
       </div>
       <p className="mt-3 text-xs text-amber-700">A loja selecionada acima define a qual unidade a planilha pertence. Importações permanecem apenas nesta sessão até a integração de armazenamento seguro. Não são salvas no servidor.</p>
       {erro && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{erro}</p>}
