@@ -16,7 +16,7 @@ function mostrarErro(error) {
 }
 
 window.addEventListener('error', event => mostrarErro(event.error || event.message));
-window.addEventListener('unhandledrejection', event => mostrarErro(event.reason));
+// Erros de rede em segundo plano não devem substituir a tela de login.
 
 Promise.all([
   import('./App.jsx'),
