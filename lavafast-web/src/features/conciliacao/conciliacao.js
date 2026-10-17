@@ -18,8 +18,8 @@ function linhasDaAba(aba) {
       sl: normalizarSL(campo("sl", "numerosolicitacao", "solicitacao")),
       placa: normalizarPlaca(campo("placa")),
       tipoLavagem: String(campo("tipolavagem", "lavagem")).trim(),
-      dataAbertura: campo("dataabertura"),
-      valor: Number(String(campo("valor")).replace(/[^0-9,.-]/g, "").replace(/\./g, "").replace(",", ".")) || 0,
+      dataAbertura: campo("dataabertura", "abertura"),
+      valor: Number(String(campo("valor", "faturamento")).replace(/[^0-9,.-]/g, "").replace(/\./g, "").replace(",", ".")) || 0,
     };
   }).filter(item => item.sl);
 }
@@ -27,15 +27,12 @@ function linhasDaAba(aba) {
 export async function lerPlanilhaPagamento(arquivo) {
   const buffer = await arquivo.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
-  const resultado = {};
-  for (const nome of workbook.SheetNames) {
-    const loja = nomeLoja(nome);
-    if (!loja) continue; // Ignorar App, Resumo e demais abas financeiras.
-    if (resultado[loja]) throw new Error(`Duas abas representam a mesma loja: ${loja}`);
-    resultado[loja] = linhasDaAba(workbook.Sheets[nome]);
-  }
-  if (!Object.keys(resultado).length) throw new Error("Nenhuma aba Mooca ou CentralPlaza encontrada.");
-  return resultado;
+  const abas = workbook.SheetNames.filter(nome => workbook.Sheets[nome] && workbook.Sheets[nome]["!ref"]);
+  const preferidas = abas.filter(nome => nomeLoja(nome));
+  const selecionadas = preferidas.length ? preferidas : abas;
+  const pagamentos = selecionadas.flatMap(nome => linhasDaAba(workbook.Sheets[nome]));
+  if (!pagamentos.length) throw new Error("A planilha não contém SLs válidas. Confira as colunas SL e PLACA.");
+  return pagamentos;
 }
 
 export function periodoQuinzena(ano, mes, quinzena) {
