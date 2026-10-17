@@ -33,7 +33,7 @@ function registroParaLista(registro) {
     data_final: registro.data_final,
     consultado_em: registro.consultado_em,
     arquivo_nome: registro.arquivo_nome,
-    resumo: registro.resultado?.resumo || {},
+    resumo: registro.resumo || registro.resultado?.resumo || {},
   };
 }
 
@@ -52,7 +52,7 @@ function tratarErro(res, erro, contexto) {
 router.get("/", async (req, res) => {
   try {
     const { data, error } = await TABELA()
-      .select("id,nome_consulta,usuario_nome,usuario_email,loja,data_inicial,data_final,consultado_em,arquivo_nome,resultado")
+      .select("id,nome_consulta,usuario_nome,usuario_email,loja,data_inicial,data_final,consultado_em,arquivo_nome,resumo")
       .eq("usuario_auth_id", req.usuario.id)
       .order("consultado_em", { ascending: false })
       .limit(100);
@@ -114,6 +114,7 @@ router.post("/", async (req, res) => {
       arquivo_nome: nomeArquivo,
       arquivo_path: caminho,
       pagamentos,
+      resumo: resultado.resumo,
       resultado: { linhas: resultado.linhas, duplicadas: resultado.duplicadas, resumo: resultado.resumo },
     }).select("*").single();
 
