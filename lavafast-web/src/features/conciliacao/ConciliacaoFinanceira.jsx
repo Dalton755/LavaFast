@@ -85,7 +85,7 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
       }});
       if (!Array.isArray(relatorio?.dados)) throw new Error("O histórico não retornou uma lista válida.");
       const concluidas = relatorio.dados.filter(item => nomeLoja(item.loja?.nome ?? item.loja?.codigo ?? item.loja ?? "") === loja);
-      setResultado({ ...conciliarLavagens({ concluidas, pagamentos: importacao.pagamentos, loja, ...periodo }), chave: chave(loja) });
+      setResultado({ ...conciliarLavagens({ concluidas, pagamentos: importacao.pagamentos, loja, ...periodo }), chave: chave(loja), consultadoEm: new Date().toISOString() });
       setConsultaSalva(null);
       setEtapaSalvar("PERGUNTAR");
       setNomeSalvar("");
@@ -181,6 +181,7 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
         dataInicial,
         dataFinal,
         arquivoNome: importacao.arquivo,
+        consultadoEm: resultado.consultadoEm,
         arquivoBase64: btoa(binario),
         pagamentos: importacao.pagamentos,
         resultado: { linhas: resultado.linhas, duplicadas: resultado.duplicadas, resumo: resultado.resumo },
