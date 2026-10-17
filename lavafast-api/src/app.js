@@ -11,6 +11,7 @@ import { iniciarSchedulers } from './scheduler/index.js';
 import solicitacaoManualRoutes from "./routes/solicitacaoManual.js";
 import tiposLavagemRoutes from "./routes/tiposLavagem.js";
 import lprRoutes from "./routes/lpr.js";
+import conciliacoesRoutes from "./routes/conciliacoes.js";
 import produtividadeRoutes
     from "./routes/produtividade.js";
 
@@ -18,6 +19,7 @@ import produtividadeRoutes
 const app = express();
 
 app.use(cors());
+app.use("/api/conciliacoes", express.json({ limit: "18mb" }), conciliacoesRoutes);
 app.use(express.json());
 app.use('/api/solicitacoes', solicitacoesRoutes);
 app.use("/api/funcionarios", funcionariosRoutes);
