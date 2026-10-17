@@ -267,6 +267,7 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
         <div className="flex items-start justify-between gap-3"><h2 id="titulo-salvar-consulta" className="text-xl font-bold text-slate-900">{etapaSalvar === "PERGUNTAR" ? "Deseja salvar esta consulta?" : "Nomear consulta"}</h2>
           <button type="button" onClick={() => setEtapaSalvar(null)} disabled={salvando} aria-label="Fechar" className="rounded-lg p-1 text-slate-500"><X size={20}/></button>
         </div>
+        {erro && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{erro}</p>}
         {etapaSalvar === "PERGUNTAR" ?
           <><p className="mt-3 text-sm text-slate-600">Salve a planilha original e o resultado do cruzamento para consultar depois, sem precisar importar novamente.</p>
             <p className="mt-2 text-sm text-slate-500">{LABELS[loja]} · {dataInicial.split("-").reverse().join("/")} a {dataFinal.split("-").reverse().join("/")}</p>
