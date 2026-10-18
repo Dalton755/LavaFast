@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, CircleHelp, ClipboardList, Gauge, Search, X } from "lucide-react";
+import { CheckCircle2, CircleHelp, ClipboardList, Gauge, Search, X, FileSpreadsheet } from "lucide-react";
 import toast from "react-hot-toast";
 import MainLayout from "../../layouts/MainLayout";
 import useOperacaoSimplificada from "../../hooks/useOperacaoSimplificada";
@@ -20,7 +20,7 @@ const formatarData = data => data
     ? new Date(data).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
     : "Não informado";
 
-export default function SimplifiedOperation({ abrirConcluidos, abrirProdutividade, usuario }) {
+export default function SimplifiedOperation({ abrirConcluidos, abrirProdutividade, abrirConciliacao, usuario }) {
     const {
         localiza,
         loading: carregandoLocaliza,
@@ -180,6 +180,9 @@ export default function SimplifiedOperation({ abrirConcluidos, abrirProdutividad
                         className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50">
                         <ClipboardList size={17} /> Histórico
                     </button>
+                    {usuario?.podeVerValores && (
+                        <button type="button" onClick={abrirConciliacao} className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800 transition hover:bg-blue-100"><FileSpreadsheet size={17} /> Conciliação</button>
+                    )}
                     {usuario?.podeVerValores && (
                         <button type="button" onClick={abrirProdutividade}
                             className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
