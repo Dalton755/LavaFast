@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { ArrowLeft, FileSpreadsheet, Search, Download } from "lucide-react";
 import MainLayout from "../../layouts/MainLayout";
@@ -21,6 +21,44 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
   const [erro, setErro] = useState("");
   const [filtro, setFiltro] = useState("NAO_DISPONIBILIZADA");
   const [busca, setBusca] = useState("");
+  const [consultas, setConsultas] = useState([]);
+  const [nomeConsulta, setNomeConsulta] = useState("");
+  const [pedirNome, setPedirNome] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [mensagem, setMensagem] = useState("");
+  useEffect(() => {
+    if (!usuario?.podeVerValores) return;
+    api.get("/solicitacoes/conciliacao/consultas").then(({data}) => setConsultas(data)).catch(() => {});
+  }, [usuario?.podeVerValores]);
+  async function salvarConsulta() {
+    if (!nomeConsulta.trim() || !resultado || !importacao) return;
+    setSalvando(true); setErro(""); setMensagem("");
+    try {
+      const { data } = await api.post("/solicitacoes/conciliacao/consultas", {
+        nome: nomeConsulta.trim(), loja, dataInicial, dataFinal,
+        arquivoNome: importacao.arquivo, pagamentos: importacao.pagamentos, resultado
+      });
+      setConsultas(atual => [data, ...atual]);
+      setPedirNome(false); setNomeConsulta("");
+      setMensagem("Consulta salva com sucesso.");
+    } catch (e) { setErro(e.response?.data?.erro || "Não foi possível salvar a consulta."); }
+    finally { setSalvando(false); }
+  }
+  async function abrirConsulta(id) {
+    setErro(""); setMensagem("");
+    try {
+      const { data } = await api.get("/solicitacoes/conciliacao/consultas/" + id);
+      setLoja(data.loja); setDataInicial(data.data_inicial); setDataFinal(data.data_final);
+      const chaveSalva = data.data_inicial + "_" + data.data_final + "_" + data.loja;
+      setImportacoes(atual => ({ ...atual, [chaveSalva]: {
+        pagamentos: data.pagamentos, arquivo: data.arquivo_nome, nome: data.nome, importadoEm: data.criado_em
+      }}));
+      setResultado({ ...data.resultado, chave: chaveSalva });
+      setFiltro(""); setBusca("");
+      setMensagem('Consulta "' + data.nome + '" carregada.');
+    } catch (e) { setErro(e.response?.data?.erro || "Não foi possível abrir a consulta."); }
+  }
+
   const periodo = { inicio: dataInicial, fim: dataFinal };
   const periodoValido = /^\d{4}-\d{2}-\d{2}$/.test(dataInicial) && /^\d{4}-\d{2}-\d{2}$/.test(dataFinal) && dataInicial <= dataFinal;
   const chave = id => `${dataInicial}_${dataFinal}_${id}`;
@@ -92,11 +130,26 @@ export default function ConciliacaoFinanceira({ voltar, usuario }) {
         <button type="button" disabled={!importacao || !periodoValido || carregando} onClick={analisar} className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white disabled:opacity-40">{carregando?"Consultando histórico...":"Cruzar com LavaFast"}</button>
         <span className="text-sm text-slate-500">{importacao ? `${importacao.nome} · ${importacao.pagamentos.length} SLs · ${importacao.arquivo}` : "Nenhuma planilha importada para esta loja e período."}</span>
       </div>
-      <p className="mt-3 text-xs text-amber-700">A loja selecionada acima define a qual unidade a planilha pertence. Importações permanecem apenas nesta sessão até a integração de armazenamento seguro. Não são salvas no servidor.</p>
+      <p className="mt-3 text-xs text-amber-700">A loja selecionada acima define a qual unidade a planilha pertence. Importações não salvas permanecem apenas nesta sessão. Após cruzar, use "Salvar consulta" para guardar os dados no servidor.</p>
+      {mensagem && <p className="mt-3 rounded-lg bg-green-50 p-3 text-sm text-green-800">{mensagem}</p>}
       {erro && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{erro}</p>}
+    </section>
+    <section className="rounded-2xl border bg-white p-5 shadow-sm">
+      <h2 className="mb-3 text-lg font-bold">Consultas salvas</h2>
+      {consultas.length === 0 ? <p className="text-sm text-slate-500">Nenhuma consulta salva ainda.</p> :
+        <div className="space-y-2">{consultas.map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3">
+          <div><strong>{item.nome}</strong><p className="text-xs text-slate-500">{LABELS[item.loja]} · {item.data_inicial?.split("-").reverse().join("/")} a {item.data_final?.split("-").reverse().join("/")} · {new Date(item.criado_em).toLocaleString("pt-BR")}</p></div>
+          <button type="button" onClick={() => abrirConsulta(item.id)} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Abrir consulta</button>
+        </div>)}</div>}
     </section>
     {resultado && resultado.chave === chave(loja) && <section className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{Object.entries({Concluídas:resultado.resumo.concluidas,Disponíveis:resultado.resumo.disponiveis,Pendentes:resultado.resumo.pendentes,Divergências:resultado.resumo.divergencias}).map(([titulo,valor])=><div key={titulo} className="rounded-2xl border bg-white p-5"><p className="text-sm text-slate-500">{titulo}</p><strong className="text-3xl text-slate-900">{valor}</strong></div>)}</div>
+      <div className="rounded-xl border bg-slate-50 p-4">
+        {!pedirNome ? <button type="button" onClick={() => setPedirNome(true)} className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">Deseja salvar esta consulta? Sim, salvar</button> :
+          <div className="flex flex-wrap items-center gap-2"><label className="text-sm font-semibold">Nome da consulta<input autoFocus maxLength={120} className="ml-2 rounded-lg border p-2" value={nomeConsulta} onChange={e => setNomeConsulta(e.target.value)} placeholder="Ex.: Mooca outubro"/></label>
+            <button type="button" disabled={salvando || !nomeConsulta.trim()} onClick={salvarConsulta} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">{salvando ? "Salvando..." : "Confirmar"}</button>
+            <button type="button" onClick={() => setPedirNome(false)} className="rounded-lg border px-4 py-2 text-sm">Cancelar</button></div>}
+      </div>
       {resultado.duplicadas.length>0 && <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800">SLs duplicadas na planilha: {resultado.duplicadas.join(", ")}</p>}
       <div className="rounded-2xl border bg-white p-5">
         <div className="flex flex-wrap items-center gap-3"><label className="text-sm">Situação<select className="ml-2 rounded-lg border p-2" value={filtro} onChange={e=>setFiltro(e.target.value)}><option value="">Todas</option>{Object.entries(STATUS).map(([id,nome])=><option key={id} value={id}>{nome}</option>)}</select></label>
