@@ -1,0 +1,19 @@
+{
+  // Copiar para wrangler.jsonc e substituir somente pelo ID de um D1 NOVO de homologacao.
+  // NUNCA vincular banco de producao ou usar rotas/dominios em producao.
+  "name": "lavafast-cloudflare-hml",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-16",
+  "workers_dev": true,
+  "vars": {
+    "ENVIRONMENT": "homologacao"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lavafast-cloudflare-hml-db",
+      "database_id": "SUBSTITUIR_PELO_ID_D1_DE_HOMOLOGACAO",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
