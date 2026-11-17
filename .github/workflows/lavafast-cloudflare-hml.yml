@@ -1,0 +1,30 @@
+name: LavaFast Cloudflare - testes de homologacao
+on:
+  push:
+    branches:
+      - feature/lavafast-cloudflare-homolog
+    paths:
+      - 'lavafast-cloudflare/**'
+      - '.github/workflows/lavafast-cloudflare-hml.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lavafast-cloudflare
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: lavafast-cloudflare/package-lock.json
+      - name: Instalar sem atualizar lockfile
+        run: npm ci
+      - name: Executar testes offline
+        run: npm test
