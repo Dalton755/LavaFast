@@ -1,5 +1,7 @@
 import { paginaOperacaoHtml, scriptOperacaoJs } from "./pilotoPage.js";
 import { pilotoApi } from "./pilotoApi.js";
+import { seguroApi } from "./seguroApi.js";
+import { paginaSeguraHtml, scriptSeguroJs } from "./pilotoSeguroPage.js";
 
 // Piloto isolado. Nunca faz consultas ao Supabase nem recebe eventos de producao.
 const responder = (conteudo, status = 200) => new Response(JSON.stringify(conteudo), {
@@ -14,6 +16,33 @@ const responder = (conteudo, status = 200) => new Response(JSON.stringify(conteu
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    // Nova camada autenticada: ID token Google verificado e perfis no D1.
+    const respostaAutenticada = await seguroApi(request, env, url);
+    if (respostaAutenticada) return respostaAutenticada;
+
+    if (url.pathname === "/piloto/seguro") {
+      if (request.method !== "GET") return responder({ erro: "Metodo nao permitido." }, 405);
+      if (env.ENVIRONMENT !== "homologacao") return responder({ erro: "Nao encontrado." }, 404);
+      return new Response(paginaSeguraHtml, {
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "no-referrer",
+          "content-security-policy": "default-src 'none'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com; img-src 'self' data: https://*.googleusercontent.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      });
+    }
+    if (url.pathname === "/piloto/seguro.js") {
+      if (request.method !== "GET") return responder({ erro: "Metodo nao permitido." }, 405);
+      if (env.ENVIRONMENT !== "homologacao") return responder({ erro: "Nao encontrado." }, 404);
+      return new Response(scriptSeguroJs, {
+        headers: { "content-type":"text/javascript; charset=utf-8",
+          "cache-control":"no-store", "x-content-type-options":"nosniff" }
+      });
+    }
 
     // Rotas de demonstracao: acesso sem dados financeiros e escrita condicionada a segredo.
     const respostaDemo = await pilotoApi(request, env, url);
