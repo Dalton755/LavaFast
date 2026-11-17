@@ -119,78 +119,89 @@ O sistema em producao, incluindo recebimento e finalizacao de lavagens,
 permanece no ambiente antigo ate testes completos de seguranca,
 login, reconciliação e autorizacao de cutover.
 
-## Autenticacao Google + perfis (etapa 4 de homologacao)
+## Manter CPF + senha atuais durante a migracao
 
-Uma segunda interface, `/piloto/seguro`, permite testar a autenticacao
-sem substituir a tela demonstrativa publica de `/piloto/operacao`.
+**O novo LavaFast nao exige login Google e nao recria funcionarios.**
+A tela `/piloto/seguro` foi adaptada ao mesmo fluxo do app original:
 
-O deploy automatico `npm run deploy` cria a tabela `hml_usuarios`
-com a migracao `0004_hml_usuarios.sql`. A tabela inicia **vazia**.
+1. Funcionario digita o CPF.
+2. Digita **a mesma senha cadastrada no LavaFast**.
+3. O Worker consulta `POST /api/auth/verificar-cpf` do backend atual
+   (apenas em HTTPS, somente durante autenticacao), resolve o email associado
+   internamente e confirma a senha pelo **Supabase Auth existente**.
+4. O Worker valida o token no endpoint original `GET /api/auth/me`,
+   que verifica o funcionario `Ativo` em `financeiro.funcionarios`.
+5. Somente depois disso emite uma sessao temporaria, HttpOnly, Secure,
+   SameSite=Strict, com validade de 30 minutos no D1 de **homologacao**.
+6. Os cards exibem nome/cargo/loja do cadastro original e **nenhum valor**.
 
-### Configuracao pelo proprietario (sem compartilhar credenciais)
+A fonte de permissao durante a transicao continua sendo o cargo real
+do empregado: `C&O` e `Analista` veem area financeira separada;
+demais cargos ativos usam operacao, exclusivamente da loja autorizada.
+A comparacao e feita no servidor, nao em query string.
+Os cards e valores da API ainda sao **todos ficticios**.
 
-1. No Google Cloud Console (APIs e servicos → Credenciais), crie
-   **OAuth Client ID → Web application**.
-2. Em **Authorized JavaScript origins**, cadastre exatamente:
-   `https://lavafast.rochadalton00.workers.dev` (sem barra final).
-   O Google Identity Services usa o JavaScript do navegador e
-   o client ID; para este fluxo popup nao e necessario URI de callback
-   no backend.
-3. Cloudflare → Workers & Pages → `lavafast` → Settings →
-   Variables and Secrets. Cadastre variaveis:
-   - `LAVAFAST_GOOGLE_CLIENT_ID`: Client ID OAuth Web do LavaFast.
-     E um identificador publico; **nao** cole o client secret.
-   - `LAVAFAST_BOOTSTRAP_EMAIL`: e-mail Google do responsavel C&O,
-     configurado somente no painel da Cloudflare, **nunca no GitHub**.
-4. Salve as variaveis e verifique nova implantacao das bindings.
-5. Abra `/piloto/seguro` e entre com a conta Google configurada
-   como bootstrap. O servidor verifica assinatura criptografica
-   Google, `iss`, `aud`, `exp`, `iat`, `email_verified` e `sub`.
-   O perfil C&O da conta bootstrap e criado no D1 somente
-   apos validar Google e quando nao houver cadastro com esse email.
+### Variaveis para ativacao opcional (Cloudflare)
 
-### Controle de perfis no servidor
+O fluxo vem **desabilitado por padrao**: nao tenta acessar empregados
+ou senhas da base real enquanto estas configuracoes nao forem feitas.
+Abrir Worker `lavafast` → Settings → Variables and Secrets:
 
-- **OPERACAO**: acessa apenas a loja autorizada; pode ler e finalizar
-  cards ficticios. Nao pode consultar financeiro nem gerenciar usuarios.
-- **ANALISTA**: acessa lojas e a rota financeira de homologacao.
-  Pode ler/finalizar cards ficticios, sem valores nos proprios cards.
-- **CO**: acesso do analista + cadastrar e desativar colaboradores
-  em **Acessos**, com perfil e atribuicao de loja.
+- `LAVAFAST_SUPABASE_URL` (Text):
+  `https://xgbdurmauhwpbiesdqmi.supabase.co`
+- `LAVAFAST_SUPABASE_ANON_KEY` (**Secret**):
+  chave publica `anon`/publishable do projeto Supabase atual.
+  **NUNCA usar service_role** para autenticacao.
+- `LAVAFAST_SESSION_SECRET` (**Secret**):
+  senha aleatoria exclusiva para HML, 32+ caracteres.
+- `LAVAFAST_BRIDGE_ENABLED` (Text):
+  `true` somente depois que todas as outras variaveis estiverem corretas.
 
-Importante: perfis **nao** podem ser definidos por campo do navegador,
-`?perfil=ANALISTA` ou cabecalho controlado pelo usuario.
-O backend consulta o perfil ativo em `hml_usuarios` a cada requisicao
-autenticada. Contas nao convidadas recebem HTTP 403.
+Os testes automatizados usam CPF e senhas **sinteticos**, simulando
+endpoints de producao. Nenhuma tentativa de login real e realizada
+pelos testes, e nenhum dado pessoal e copiado para o GitHub.
+Nunca enviar CPF, senha ou chaves ao ChatGPT.
 
-A primeira associacao de um convite por email a um Google `sub`
-so ocorre para Gmail/Google Workspace cujo dominio e autoritativo,
-e depois utiliza o identificador imutavel `sub`, nao o email.
-Uma conta sem vinculo, desativada ou com loja invalida nao entra.
+### Medidas de seguranca
 
-### Endpoints novos
+- A API Worker usa CSP, HTTPS e valida `Origin` nas mutacoes.
+- A chave do Supabase e usada somente no Worker, nao no navegador.
+- CPF, senha, email, token JWT do Supabase e hash de senha **nunca**
+  sao persistidos no banco D1 de homologacao.
+- So persistem sessoes temporarias e contador de falhas indexado por
+  HMAC irreversivel de CPF+IP, com bloqueio apos 5 falhas em 15 minutos.
+- Sessao e invalidada no logout e expira em 30 minutos.
+- O backend nunca envia `valor_centavos` nos cards operacionais,
+  inclusive se o usuario for C&O. Financeiro permanece restrito a
+  `GET /api/seguro/financeiro/resumo`.
+- A finalizacao e atomica, bloqueia registros reais (apenas `HML-CARD-n`)
+  e aplica verificacao de loja no WHERE SQL.
+- Nenhuma rota permite CRUD de funcionarios pelo novo piloto. Cargos,
+  nomes e lojas sao os do cadastro existente.
+- Colaboradores sem senha/auth ou email associado devem continuar
+  configurando seu acesso pelo app atual antes de usar o novo.
+- O login CPF desta fase depende **temporariamente** do Render e do
+  Supabase Auth, que **nao podem ser desativados** antes de existir
+  uma alternativa testada para as senhas e sincronizacao de funcionarios.
 
-- `GET /api/seguro/configuracao`: cliente OAuth publico e estado de configuracao.
-- `GET /api/seguro/eu`: perfil validado no D1.
-- `GET /api/seguro/solicitacoes`: somente cards ficticios abertos,
-  filtrados obrigatoriamente por loja para OPERACAO.
-- `GET /api/seguro/concluidos`: somente ficticios concluidos.
-- `POST /api/seguro/finalizar/:id`: finalizacao atomica de card HML,
-  autenticada via ID token, respeitando loja e bloqueando duplicidade.
-- `GET /api/seguro/financeiro/resumo`: exclusivo de ANALISTA ou CO,
-  valores ficticios em rota separada; **nenhum valor no card**.
-- `GET/POST /api/seguro/usuarios`: exclusivo de CO, convidar e atualizar
-  papel/loja/status de acesso.
+### Endpoints autenticados
 
-Token Google fica somente na memoria do navegador e expira segundo
-a politica Google; em caso de expiracao deve ser renovado por login.
-Todos os endpoints de dados protegidos exigem Bearer ID token valido.
-Nunca salvar tokens em localStorage, cookies acessiveis por JavaScript
-ou no banco D1. Nunca gravar `LAVAFAST_BOOTSTRAP_EMAIL` ou algum segredo
-em arquivos `wrangler.jsonc` versionados. Desativar a conta no D1
-revoga acesso nas novas requisicoes.
+- `GET /api/seguro/configuracao`: informa se a ponte esta configurada.
+- `POST /api/seguro/entrar`: valida CPF+senha atuais e cria sessao HML.
+- `GET /api/seguro/eu`: nome, cargo, loja e perfil reais da sessao.
+- `POST /api/seguro/sair`: invalida sessao HML.
+- `GET /api/seguro/solicitacoes`: cards HML de loja autorizada.
+- `GET /api/seguro/concluidos`: concluídos HML autorizados.
+- `POST /api/seguro/finalizar/:id`: finaliza somente um card de teste.
+- `GET /api/seguro/financeiro/resumo`: somente C&O e Analista,
+  financeiro **ficticio**, em tela separada.
 
-**Atenção**: so ha contas e dados *de homologacao*. Os usuarios
-do Supabase em producao nao foram migrados. O processo de importacao
-de colaboradores exige reconciliacao de vinculos antigos, autorizacao
-administrativa e validacao de identidade antes de liberar dados reais.
+### Migração definitiva ainda pendente
+
+O Supabase Auth guarda **hashes**, nao senhas legiveis.
+Por isso, preservar a senha atual e remover toda dependencia do
+Supabase exigira uma fase adicional de migracao de credenciais com
+criterios de seguranca, consolidacao de funcionarios e controle de
+sincronismo. **Nao copiar dados pessoais, CPF, emails ou hashes de
+senha indiscriminadamente.** O sistema antigo so sera desligado
+depois de testes funcionais e autorizacao expressa.
