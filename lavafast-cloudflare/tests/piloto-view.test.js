@@ -43,3 +43,24 @@ test("pagina e script bloqueados fora da homologacao", async () => {
   assert.equal((await chamar("/piloto/operacao.js", { ENVIRONMENT: "production" })).status, 404);
   assert.equal((await chamar("/piloto", {}, "POST")).status, 405);
 });
+
+test("novo painel autenticado preserva CSP, login Google e area financeira segregada", async () => {
+  const htmlResp = await chamar("/piloto/seguro");
+  const html = await htmlResp.text();
+  assert.equal(htmlResp.status, 200);
+  assert.match(htmlResp.headers.get("content-security-policy"), /accounts\\.google\\.com/);
+  assert.match(htmlResp.headers.get("content-security-policy"), /frame-ancestors 'none'/);
+  assert.match(html, /id="google-login"/);
+  assert.match(html, /id="painel-financeiro"/);
+  assert.match(html, /id="painel-acessos"/);
+  const jsResp = await chamar("/piloto/seguro.js");
+  assert.equal(jsResp.status, 200);
+  const script = await jsResp.text();
+  new Script(script);
+  assert.match(script, /\/api\/seguro\/eu/);
+  assert.match(script, /\/api\/seguro\/financeiro\/resumo/);
+  assert.match(script, /\/api\/seguro\/usuarios/);
+  assert.doesNotMatch(script, /localStorage|sessionStorage|document\\.cookie|innerHTML/);
+  assert.equal((await chamar("/piloto/seguro", {})).status, 404);
+  assert.equal((await chamar("/piloto/seguro.js", {})).status, 404);
+});
