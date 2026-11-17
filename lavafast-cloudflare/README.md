@@ -56,3 +56,23 @@ homologacao. Depois da publicacao, abrir:
 **Antes de importar registros reais**: excluir os registros HML e restringir
 endpoints de dados reais com autenticacao e autorizacao por loja/perfil.
 Nenhum endpoint novo permite criar, editar ou finalizar lavagens.
+
+## Quadro visual de homologacao (leitura)
+
+Acesse `/piloto/operacao` no Worker `lavafast` para abrir uma interface
+responsiva que consulta somente os cards ficticios de `/api/piloto/cards`.
+Inclui:
+- Contadores por situacao e distribuicao em 4 etapas.
+- Filtro por loja e pesquisa por placa/numero de solicitacao.
+- Atualizacao automatica a cada 30 segundos quando a pagina esta visivel.
+- Formato de moeda em reais e datas em America/Sao_Paulo.
+- Tratamento de erros e mensagens explicitas de ambiente demonstrativo.
+
+A interface **nao tem botao de movimento, edicao, exclusao ou conclusao**.
+O servidor so serve a pagina quando `ENVIRONMENT=homologacao`, com CSP
+que restringe scripts e conexoes a mesma origem. Uma futura interface
+operacional real precisara de login, permissoes e camada de servicos segura
+antes de habilitar metodos de escrita no D1.
+
+O painel definitivo React/Vite permanece em `lavafast-web/`.
+Este piloto serve apenas para validar o fluxo Worker -> D1 -> visualizacao.
