@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node --test",
     "dev": "npx wrangler dev",
-    "deploy": "npx wrangler deploy"
+    "deploy": "npm test && npm run db:migrate && npx wrangler deploy",
+    "db:migrate": "npx wrangler d1 migrations apply DB --remote"
   }
 }
