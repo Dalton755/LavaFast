@@ -1,3 +1,5 @@
+import { paginaOperacaoHtml, scriptOperacaoJs } from "./pilotoPage.js";
+
 // Piloto isolado. Nunca faz consultas ao Supabase nem recebe eventos de producao.
 const responder = (conteudo, status = 200) => new Response(JSON.stringify(conteudo), {
   status,
@@ -14,6 +16,34 @@ export default {
 
     if (request.method !== "GET") {
       return responder({ erro: "Metodo nao permitido." }, 405);
+    }
+
+    // Demonstracao visual isolada: nao ha alteracao de dados nem integracao externa.
+    if (url.pathname === "/piloto" || url.pathname === "/piloto/operacao") {
+      if (env.ENVIRONMENT !== "homologacao") return responder({ erro: "Nao encontrado." }, 404);
+      return new Response(paginaOperacaoHtml, {
+        status: 200,
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "no-referrer",
+          "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      });
+    }
+
+    if (url.pathname === "/piloto/operacao.js") {
+      if (env.ENVIRONMENT !== "homologacao") return responder({ erro: "Nao encontrado." }, 404);
+      return new Response(scriptOperacaoJs, {
+        status: 200,
+        headers: {
+          "content-type": "text/javascript; charset=utf-8",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff"
+        }
+      });
     }
 
     if (url.pathname === "/api/health") {
