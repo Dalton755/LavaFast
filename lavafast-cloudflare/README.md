@@ -57,22 +57,64 @@ homologacao. Depois da publicacao, abrir:
 endpoints de dados reais com autenticacao e autorizacao por loja/perfil.
 Nenhum endpoint novo permite criar, editar ou finalizar lavagens.
 
-## Quadro visual de homologacao (leitura)
+## Fluxo de homologacao: Solicitações → Concluídos
 
-Acesse `/piloto/operacao` no Worker `lavafast` para abrir uma interface
-responsiva que consulta somente os cards ficticios de `/api/piloto/cards`.
-Inclui:
-- Contadores por situacao e distribuicao em 4 etapas.
-- Filtro por loja e pesquisa por placa/numero de solicitacao.
-- Atualizacao automatica a cada 30 segundos quando a pagina esta visivel.
-- Formato de moeda em reais e datas em America/Sao_Paulo.
-- Tratamento de erros e mensagens explicitas de ambiente demonstrativo.
+- O painel visual esta em `/piloto/operacao`.
+- Duas abas: **Solicitações** (SOLICITADO, AGUARDANDO e EM_LAVAGEM
+  sao status internos legados, **nao etapas visuais**) e **Concluídos**.
+- Os cards de demonstracao nao exibem ou retornam valores financeiros.
+- A API usa colunas explicitas (whitelist) nos endpoints, inclusive
+  no legado `/api/piloto/cards`. Alterar `?perfil=ANALISTA` nao libera dados.
+- Timer de solicitacao usa `recebida_em` ate agora. A finalizacao salva
+  `finalizada_em`, e o tempo final e calculado a partir dessas datas.
+- Filtro por loja e pesquisa local por placa ou numero da solicitacao.
+- Layout responsivo com cards elevados, iluminacao sutil e sombras 3D.
+- Atualizacao automatica a cada 30 segundos na guia visivel.
 
-A interface **nao tem botao de movimento, edicao, exclusao ou conclusao**.
-O servidor so serve a pagina quando `ENVIRONMENT=homologacao`, com CSP
-que restringe scripts e conexoes a mesma origem. Uma futura interface
-operacional real precisara de login, permissoes e camada de servicos segura
-antes de habilitar metodos de escrita no D1.
+### Teste de finalizacao protegido
 
-O painel definitivo React/Vite permanece em `lavafast-web/`.
-Este piloto serve apenas para validar o fluxo Worker -> D1 -> visualizacao.
+Nao existe autenticacao de usuarios migrada para Cloudflare ainda.
+Para **evitar um endpoint publico que finalize registros**, o POST
+`/api/piloto/finalizar/HML-CARD-1` requer um secret de **pelo menos
+32 caracteres**. Sem secret, o botao fica bloqueado e a API responde 503.
+
+Configurar no Cloudflare: Worker `lavafast` → Settings →
+Variables and Secrets → Add → **Secret** (nao Text).
+
+- Nome do secret: `HML_FINALIZE_SECRET`
+- Valor: senha aleatoria forte com 32+ caracteres criada no seu
+  gerenciador de senhas. Nao compartilhar no chat nem no GitHub.
+- O usuario digita a chave na janela de confirmacao do painel.
+  A chave vai em header HTTPS e nao fica gravada em localStorage.
+- Servidor exige mesma Origin, secret valido e `ENVIRONMENT=homologacao`.
+- Grava somente linhas `HML-CARD-n`, de origem `HOMOLOGACAO`
+  e fornecedor `LAB-HOMOLOGACAO`, com status ativo.
+- UPDATE atomico impede finalizacao duplicada; somente o D1 de
+  homologacao e modificado. Nenhuma acao na Localiza ou Supabase.
+
+**Nao usar essa chave de teste como autenticacao de producao.** Antes de
+importar dados reais, implementar login, sessao, revogacao e perfis
+verificados no servidor (Operacao/Analista/C&O) e isolar quaisquer
+dados financeiros em rotas exclusivas para as permissoes autorizadas.
+
+### Endpoints
+
+`GET /api/piloto/solicitacoes`: cards ativos de demonstracao, sem valores.
+
+`GET /api/piloto/concluidos`: finalizados de demonstracao, sem valores,
+incluindo o tempo total em segundos.
+
+`GET /api/piloto/configuracao`: informa se o segredo de teste esta configurado
+(sem expor seu valor).
+
+`POST /api/piloto/finalizar/:id`: termina uma lavagem de teste somente
+quando autorizada pela chave de homologacao.
+
+`GET /api/piloto/cards`: compatibilidade (sem valores financeiros).
+
+### Importante
+
+**Fluxo real de e-mails ainda NAO foi conectado ao Cloudflare.**
+O sistema em producao, incluindo recebimento e finalizacao de lavagens,
+permanece no ambiente antigo ate testes completos de seguranca,
+login, reconciliação e autorizacao de cutover.
