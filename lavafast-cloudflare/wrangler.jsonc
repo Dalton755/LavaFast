@@ -1,0 +1,18 @@
+{
+  // Ambiente EXCLUSIVO de testes. Nao adicionar dominio de producao.
+  "name": "lavafast-cloudflare-hml",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-16",
+  "workers_dev": true,
+  "vars": {
+    "ENVIRONMENT": "homologacao"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lavafast-cloudflare-hml-db",
+      "database_id": "369609c6-0abc-4a24-9980-a2fe150cbea5",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
