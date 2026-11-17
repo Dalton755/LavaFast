@@ -1,6 +1,6 @@
 {
   // Ambiente EXCLUSIVO de testes. Nao adicionar dominio de producao.
-  "name": "lavafast-cloudflare-hml",
+  "name": "lavafast",
   "main": "src/index.js",
   "compatibility_date": "2026-11-16",
   "workers_dev": true,
