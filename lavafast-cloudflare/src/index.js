@@ -35,6 +35,33 @@ export default {
       }, banco === "indisponivel" ? 503 : 200);
     }
 
+    if (url.pathname === "/api/piloto/estrutura") {
+      if (!env.DB) {
+        return responder({ erro: "D1 de homologacao nao vinculado." }, 503);
+      }
+      const esperadas = [
+        "op_lojas", "op_tipos_lavagem", "op_solicitacoes_lavagem",
+        "op_solicitacoes_funcionarios", "op_lavagens_avulsas",
+        "op_importacoes_email", "op_gmail_sync_state", "op_conciliacao_consultas"
+      ];
+      try {
+        const resultado = await env.DB.prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'op_%'"
+        ).all();
+        const presentes = new Set((resultado.results ?? []).map(item => item.name));
+        const pendentes = esperadas.filter(nome => !presentes.has(nome));
+        return responder({
+          ambiente: "homologacao",
+          tabelas_esperadas: esperadas.length,
+          tabelas_criadas: esperadas.length - pendentes.length,
+          estrutura_pronta: pendentes.length === 0,
+          tabelas_pendentes: pendentes
+        });
+      } catch {
+        return responder({ erro: "Nao foi possivel verificar a estrutura D1." }, 503);
+      }
+    }
+
     if (url.pathname === "/api/piloto/lojas") {
       if (!env.DB) {
         return responder({ erro: "D1 de homologacao nao vinculado." }, 503);
