@@ -48,7 +48,7 @@ test("novo painel autenticado preserva CSP, login Google e area financeira segre
   const htmlResp = await chamar("/piloto/seguro");
   const html = await htmlResp.text();
   assert.equal(htmlResp.status, 200);
-  assert.match(htmlResp.headers.get("content-security-policy"), /accounts\\.google\\.com/);
+  assert.ok(htmlResp.headers.get("content-security-policy").includes("accounts.google.com"));
   assert.match(htmlResp.headers.get("content-security-policy"), /frame-ancestors 'none'/);
   assert.match(html, /id="google-login"/);
   assert.match(html, /id="painel-financeiro"/);
@@ -60,7 +60,7 @@ test("novo painel autenticado preserva CSP, login Google e area financeira segre
   assert.match(script, /\/api\/seguro\/eu/);
   assert.match(script, /\/api\/seguro\/financeiro\/resumo/);
   assert.match(script, /\/api\/seguro\/usuarios/);
-  assert.doesNotMatch(script, /localStorage|sessionStorage|document\\.cookie|innerHTML/);
+  assert.doesNotMatch(script, /localStorage|sessionStorage|document\.cookie|innerHTML/);
   assert.equal((await chamar("/piloto/seguro", {})).status, 404);
   assert.equal((await chamar("/piloto/seguro.js", {})).status, 404);
 });
