@@ -6,7 +6,7 @@ import worker from "../src/index.js";
 
 const migracao = name => readFileSync(new URL("../migrations/" + name, import.meta.url), "utf8");
 const SECRET = "segredo-demonstracao-32-caracteres-muito-longo-aleatorio";
-const URL = "https://lavafast-teste.invalid";
+const BASE_URL = "https://lavafast-teste.invalid";
 const ambiente = (db, segredo = SECRET) => ({
   DB: {
     prepare(sql) {
@@ -38,7 +38,7 @@ function criarBanco() {
   return db;
 }
 async function chamar(path, env, opts = {}) {
-  const response = await worker.fetch(new Request(URL + path, opts), env);
+  const response = await worker.fetch(new Request(BASE_URL + path, opts), env);
   return { status: response.status, dados: await response.json() };
 }
 
@@ -87,7 +87,7 @@ test("filtro de loja e validado pelo servidor", async () => {
 test("POST bloqueara ausencia de secret, origem divergente e chave invalida", async () => {
   const db=criarBanco();
   const path="/api/piloto/finalizar/HML-CARD-1";
-  const opts=(chave,origem=URL)=>({method:"POST",headers:{
+  const opts=(chave,origem=BASE_URL)=>({method:"POST",headers:{
     Origin:origem, "x-lavafast-demo-key":chave,"Content-Type":"application/json"
   },body:"{}"});
   try {
@@ -109,7 +109,7 @@ test("finalizacao demo atualiza D1, preserva tempo e move card uma unica vez", a
   const db=criarBanco();
   const env=ambiente(db);
   const path="/api/piloto/finalizar/HML-CARD-1";
-  const opts={method:"POST",headers:{Origin:URL,"x-lavafast-demo-key":SECRET},body:"{}"};
+  const opts={method:"POST",headers:{Origin:BASE_URL,"x-lavafast-demo-key":SECRET},body:"{}"};
   try{
     const result=await chamar(path,env,opts);
     assert.equal(result.status,200);
@@ -131,7 +131,7 @@ test("recusa escrita em IDs nao demonstrativos e metodo incorreto", async () => 
   const db=criarBanco();
   const env=ambiente(db);
   try{
-    const opts={method:"POST",headers:{Origin:URL,"x-lavafast-demo-key":SECRET},body:"{}"};
+    const opts={method:"POST",headers:{Origin:BASE_URL,"x-lavafast-demo-key":SECRET},body:"{}"};
     assert.equal((await chamar("/api/piloto/finalizar/9999",env,opts)).status,400);
     assert.equal((await chamar("/api/piloto/finalizar/HML-CARD-1",env)).status,405);
     assert.equal((await chamar("/api/piloto/solicitacoes",env,opts)).status,405);
