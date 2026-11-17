@@ -1,6 +1,6 @@
 import { paginaOperacaoHtml, scriptOperacaoJs } from "./pilotoPage.js";
 import { pilotoApi } from "./pilotoApi.js";
-import { seguroApi } from "./seguroApi.js";
+import { cpfSeguroApi } from "./cpfSeguroApi.js";
 import { paginaSeguraHtml, scriptSeguroJs } from "./pilotoSeguroPage.js";
 
 // Piloto isolado. Nunca faz consultas ao Supabase nem recebe eventos de producao.
@@ -17,8 +17,8 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Nova camada autenticada: ID token Google verificado e perfis no D1.
-    const respostaAutenticada = await seguroApi(request, env, url);
+    // Nova camada autenticada: CPF + senha atuais validados no backend legado; sessao curta D1.
+    const respostaAutenticada = await cpfSeguroApi(request, env, url);
     if (respostaAutenticada) return respostaAutenticada;
 
     if (url.pathname === "/piloto/seguro") {
@@ -31,7 +31,7 @@ export default {
           "x-content-type-options": "nosniff",
           "x-frame-options": "DENY",
           "referrer-policy": "no-referrer",
-          "content-security-policy": "default-src 'none'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com; connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com; img-src 'self' data: https://*.googleusercontent.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+          "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
         }
       });
     }
