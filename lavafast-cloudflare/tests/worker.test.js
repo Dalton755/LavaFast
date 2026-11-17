@@ -52,3 +52,39 @@ test("nao aceita alteracoes nem outras rotas", async () => {
   assert.equal((await chamar("/api/health", { DB }, "POST")).status, 405);
   assert.equal((await chamar("/api/solicitacoes", { DB })).status, 404);
 });
+
+test("cards demonstrativos exigem ambiente de homologacao e D1", async () => {
+  assert.equal((await chamar("/api/piloto/cards")).status, 404);
+  assert.equal((await chamar("/api/piloto/cards", { ENVIRONMENT: "homologacao" })).status, 503);
+  assert.equal((await chamar("/api/piloto/cards?loja=MOOCA", { ENVIRONMENT: "homologacao", DB })).status, 400);
+});
+
+test("cards demonstrativos respondem a consulta filtrada sem dados reais", async () => {
+  const mock = {
+    prepare(sql) {
+      assert.match(sql, /origem = 'HOMOLOGACAO'/);
+      assert.match(sql, /fornecedor = 'LAB-HOMOLOGACAO'/);
+      assert.match(sql, /s.id LIKE 'HML-%'/);
+      return {
+        bind(loja1, loja2) {
+          assert.equal(loja1, "HML_MOOCA");
+          assert.equal(loja2, "HML_MOOCA");
+          return {
+            async all() {
+              return { results: [
+                { id: "HML-CARD-1", placa: "TESTE01", status: "SOLICITADO", valor_centavos: 5000 }
+              ] };
+            }
+          };
+        }
+      };
+    }
+  };
+  const r = await chamar("/api/piloto/cards?loja=HML_MOOCA", {
+    DB: mock, ENVIRONMENT: "homologacao"
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.demonstracao, true);
+  assert.equal(r.body.total, 1);
+  assert.equal(r.body.cards[0].placa, "TESTE01");
+});
