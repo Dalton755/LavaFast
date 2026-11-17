@@ -1,4 +1,5 @@
 import { paginaOperacaoHtml, scriptOperacaoJs } from "./pilotoPage.js";
+import { pilotoApi } from "./pilotoApi.js";
 
 // Piloto isolado. Nunca faz consultas ao Supabase nem recebe eventos de producao.
 const responder = (conteudo, status = 200) => new Response(JSON.stringify(conteudo), {
@@ -13,6 +14,10 @@ const responder = (conteudo, status = 200) => new Response(JSON.stringify(conteu
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    // Rotas de demonstracao: acesso sem dados financeiros e escrita condicionada a segredo.
+    const respostaDemo = await pilotoApi(request, env, url);
+    if (respostaDemo) return respostaDemo;
 
     if (request.method !== "GET") {
       return responder({ erro: "Metodo nao permitido." }, 405);
@@ -89,49 +94,6 @@ export default {
         });
       } catch {
         return responder({ erro: "Nao foi possivel verificar a estrutura D1." }, 503);
-      }
-    }
-
-    // Apenas dados artificialmente inseridos em homologacao: sem acesso a registros reais.
-    if (url.pathname === "/api/piloto/cards") {
-      if (env.ENVIRONMENT !== "homologacao") {
-        return responder({ erro: "Nao encontrado." }, 404);
-      }
-      if (!env.DB) {
-        return responder({ erro: "D1 de homologacao nao vinculado." }, 503);
-      }
-
-      const loja = url.searchParams.get("loja") ?? "";
-      const lojasValidas = ["", "HML_MOOCA", "HML_CENTRAL_PLAZA"];
-      if (!lojasValidas.includes(loja)) {
-        return responder({ erro: "Filtro de loja invalido para homologacao." }, 400);
-      }
-
-      try {
-        const resultado = await env.DB.prepare(`
-          SELECT s.id, s.numero_solicitacao, s.placa, s.status, s.valor_centavos,
-                 s.recebida_em, s.iniciada_em, s.finalizada_em,
-                 l.nome AS loja, l.codigo AS codigo_loja,
-                 t.nome AS tipo_lavagem
-            FROM op_solicitacoes_lavagem s
-            JOIN op_lojas l ON l.id = s.loja_id
-            LEFT JOIN op_tipos_lavagem t ON t.id = s.tipo_lavagem_id
-           WHERE s.origem = 'HOMOLOGACAO'
-             AND s.fornecedor = 'LAB-HOMOLOGACAO'
-             AND s.id LIKE 'HML-%'
-             AND (? = '' OR l.codigo = ?)
-           ORDER BY s.numero_solicitacao DESC
-           LIMIT 20
-        `).bind(loja, loja).all();
-        const cards = resultado.results ?? [];
-        return responder({
-          ambiente: "homologacao",
-          demonstracao: true,
-          total: cards.length,
-          cards
-        });
-      } catch {
-        return responder({ erro: "Consulta demonstrativa D1 indisponivel." }, 503);
       }
     }
 
