@@ -87,4 +87,5 @@ test("cards demonstrativos respondem a consulta filtrada sem dados reais", async
   assert.equal(r.body.demonstracao, true);
   assert.equal(r.body.total, 1);
   assert.equal(r.body.cards[0].placa, "TESTE01");
+  assert.ok(!Object.hasOwn(r.body.cards[0], "valor_centavos"), "API publica nao pode mostrar valor financeiro");
 });

@@ -14,7 +14,11 @@ test("painel visual pode ser aberto apenas em homologacao", async () => {
   assert.equal(page.headers.get("x-frame-options"), "DENY");
   const html = await page.text();
   assert.match(html, /HOMOLOGAÇÃO/);
-  assert.match(html, /Dados exclusivamente demonstrativos/);
+  assert.match(html, /Nenhum dado financeiro aparece neste painel/);
+  assert.match(html, /id="tab-solicitacoes"/);
+  assert.match(html, /id="tab-concluidos"/);
+  assert.match(html, /id="confirmar"/);
+  assert.doesNotMatch(html, /valor_centavos|id="m-andamento"|data-status="EM_LAVAGEM"/);
   assert.match(html, /\/piloto\/operacao.js/);
   assert.match(html, /id="loja"/);
   assert.match(html, /id="busca"/);
@@ -26,7 +30,10 @@ test("script da pagina usa consulta D1 demonstrativa e e valido", async () => {
   assert.match(resp.headers.get("content-type"), /text\/javascript/);
   const script = await resp.text();
   new Script(script); // verifica sintaxe JS e impede regressao de deploy
-  assert.match(script, /\/api\/piloto\/cards/);
+  assert.match(script, /\/api\/piloto\/solicitacoes/);
+  assert.match(script, /\/api\/piloto\/concluidos/);
+  assert.match(script, /\/api\/piloto\/finalizar\//);
+  assert.doesNotMatch(script, /valor_centavos/);
   assert.match(script, /textContent/);
   assert.doesNotMatch(script, /innerHTML|outerHTML|insertAdjacentHTML/);
 });
