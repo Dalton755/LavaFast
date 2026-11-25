@@ -262,8 +262,10 @@ async function garantirAuditoriaGmail(env) {
  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_ct_email_importacoes_processado ON ct_email_importacoes(processado_em DESC)").run();
 }
 
-async function importEmail(r,env,u,relay=false){
- if(relay){
+async function importEmail(r,env,u,relay=false,inboundWorker=false){
+ if(inboundWorker){
+   // Invocado SOMENTE pelo handler email() interno, nao por rota HTTP.
+ }else if(relay){
   if(typeof env.CT_EMAIL_RELAY_SECRET!=="string"||
    !await secretEq(r.headers.get("x-lavafast-relay"),env.CT_EMAIL_RELAY_SECRET))
    return response({erro:"Integracao Gmail nao autorizada."},403);
@@ -275,7 +277,7 @@ async function importEmail(r,env,u,relay=false){
    return response({erro:"Conteudo da solicitacao vazio ou muito grande."},400);
  const extraido=extrairSolicitacoesLocaliza(texto);
  let loja=b?.loja_codigo;
- if(relay){
+ if(relay||inboundWorker){
    // Remetente, assunto e agencia sao conferidos antes de gravar qualquer SL.
    // O Apps Script associado a conta Gmail manda os cabecalhos originais.
    if(!verificarMensagemLocaliza(b?.remetente,b?.assunto))
@@ -296,15 +298,15 @@ async function importEmail(r,env,u,relay=false){
  if(u&&!isManager(u)&&loja!==u.loja_codigo)return response({erro:"Sem acesso a loja."},403);
  const vehicles=extraido.veiculos;
  if(!vehicles.length)return response({erro:"Nenhuma SL com placa reconhecida."},422);
- const msgId=relay?b.message_id:null;
+ const msgId=relay||inboundWorker?b.message_id:null;
  let criados=0,duplicados=0;
- if(relay)await garantirAuditoriaGmail(env);
+ if(relay||inboundWorker)await garantirAuditoriaGmail(env);
  for(const v of vehicles){
   const inserted=await saveCard(env,{...v,loja,tipo:"Nao informado",obs:""},
-    "IMPORTACAO_EMAIL",u,msgId,relay?b.recebido_em:null);
+    "IMPORTACAO_EMAIL",u,msgId,relay||inboundWorker?b.recebido_em:null);
   if(inserted)criados++;else duplicados++;
  }
- if(relay){
+ if(relay||inboundWorker){
   const processado=now();
   await env.DB.prepare(`INSERT INTO ct_email_importacoes
    (message_id,loja_codigo,recebido_em,processado_em,identificados,criados,duplicados,status)
@@ -319,7 +321,19 @@ async function importEmail(r,env,u,relay=false){
      vehicles.length,criados,duplicados,criados?"PROCESSADO":"DUPLICADO").run();
  }
  return response({sucesso:true,criados,duplicados,encontrados:vehicles.length,
-   origem:relay?"GMAIL_AUTOMATICO":"IMPORTACAO_MANUAL",loja_codigo:loja});
+   origem:relay||inboundWorker?"GMAIL_AUTOMATICO":"IMPORTACAO_MANUAL",loja_codigo:loja});
+}
+
+// Importacao interna pela funcao email() do Worker. Sem API publica de bypass
+// e sem segredo compartilhado; chamada so apos o Email Routing aceitar o email.
+export async function receberEmailDoCloudflare(payload,env) {
+ if(!enabled(env))return {sucesso:false,erro:"Contingencia indisponivel"};
+ const request=new Request("https://lavafast.internal/api/contingencia/email/routing",{
+   method:"POST",headers:{"content-type":"application/json"},
+   body:JSON.stringify(payload)
+ });
+ const result=await importEmail(request,env,null,false,true);
+ try{return await result.json();}catch{return {sucesso:false,erro:"Falha no parser"};}
 }
 
 async function statusGmail(env,u){
