@@ -350,6 +350,7 @@ async function statusGmail(env,u){
    FROM ct_email_importacoes ORDER BY processado_em DESC LIMIT 12`).all();
  return response({
    relay_configurado:typeof env.CT_EMAIL_RELAY_SECRET==="string"&&env.CT_EMAIL_RELAY_SECRET.length>=32,
+   email_routing_configurado:typeof env.CT_EMAIL_INBOUND_TO==="string"&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(env.CT_EMAIL_INBOUND_TO),
    periodo:"ultimas_24_horas",
    resumo:{mensagens:totals?.mensagens||0,cards_criados:totals?.cards_criados||0,duplicados:totals?.duplicados||0},
    ultimas:(last.results||[]).map(row=>row)
@@ -387,7 +388,8 @@ export async function contingenciaApi(r,env,url){
   const estrutura_pronta=pronto?await verificarEstruturaContingencia(env):false;
   return response({ambiente:"homologacao",independente_supabase:true,pronto,
     estrutura_pronta,instalacao_automatica_com_chave:true,
-    email_relay_habilitado:pronto&&typeof env.CT_EMAIL_RELAY_SECRET==="string"&&env.CT_EMAIL_RELAY_SECRET.length>=32});
+    email_relay_habilitado:pronto&&typeof env.CT_EMAIL_RELAY_SECRET==="string"&&env.CT_EMAIL_RELAY_SECRET.length>=32,
+    email_routing_configurado:pronto&&typeof env.CT_EMAIL_INBOUND_TO==="string"&&env.CT_EMAIL_INBOUND_TO.includes("@")});
  }
  if(!enabled(env))return response({erro:"Ativacao de contingencia pendente no Cloudflare."},503);
  try{
