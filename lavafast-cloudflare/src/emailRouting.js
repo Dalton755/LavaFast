@@ -96,9 +96,6 @@ function extractMime(raw){
  const parsed=parsePart(raw);
  return parsed?.text?.trim().slice(0,26000)||"";
 }
-function normalizeMid(s){
- return String(s||"").trim().replace(/[<>]/g,"").slice(0,150);
-}
 export async function processarEmailRouting(message,env){
  if(env.ENVIRONMENT!=="homologacao"||!env.DB)return;
  const configured=norm(env.CT_EMAIL_INBOUND_TO);
@@ -124,11 +121,11 @@ export async function processarEmailRouting(message,env){
  if(raw.length>maxBytes*2)throw Error("Email muito grande");
  const texto=extractMime(raw);
  if(!texto)throw Error("Email Localiza sem texto");
- const message_id=normalizeMid(message.headers.get("message-id"))||
-     "eml-"+await (async()=>{
-       const data=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(raw.slice(0,8000)));
-       return [...new Uint8Array(data)].slice(0,16).map(v=>v.toString(16).padStart(2,"0")).join("");
-     })();
+ // ID opaco para nao gravar cabecalhos brutos ou dados pessoais no D1.
+ const digest=await crypto.subtle.digest("SHA-256",
+  new TextEncoder().encode(message.headers.get("message-id")||raw.slice(0,8000)));
+ const message_id="eml-"+[...new Uint8Array(digest)].slice(0,16)
+  .map(v=>v.toString(16).padStart(2,"0")).join("");
  const match=texto.match(/Ag[eê]ncia da Abertura\s*:\s*([A-Z0-9]+)/i);
  const agency=String(match?.[1]||"").toUpperCase();
  const loja_codigo=agency==="ACSMC"?"MOOCA":agency==="ACUCP"?"CENTRAL_PLAZA":null;
