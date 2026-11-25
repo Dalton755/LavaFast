@@ -175,9 +175,10 @@ function cardFields(b,u){
  if(u&&!isManager(u)&&u.loja_codigo!==loja)return {erro:"Sem permissao para esta loja.",status:403};
  return {numero,placa,loja,tipo,obs};
 }
-async function saveCard(env,c,origem,user=null,msgId=null){
+async function saveCard(env,c,origem,user=null,msgId=null,receivedAt=null){
  const id=crypto.randomUUID(),date=now();
- const ret=await env.DB.prepare("INSERT OR IGNORE INTO ct_solicitacoes(id,numero_solicitacao,placa,loja_codigo,tipo_lavagem,status,recebida_em,origem,mensagem_id,observacao,criado_em,atualizado_em) VALUES (?,?,?,?,?,'SOLICITACAO',?,?,?,?,?,?)").bind(id,c.numero,c.placa,c.loja,c.tipo,date,origem,msgId,c.obs||null,date,date).run();
+ const sent=receivedAt&&Number.isFinite(Date.parse(receivedAt))&&Date.parse(receivedAt)<=Date.now()+60000&&Date.parse(receivedAt)>=Date.now()-14*86400000?new Date(receivedAt).toISOString():date;
+ const ret=await env.DB.prepare("INSERT OR IGNORE INTO ct_solicitacoes(id,numero_solicitacao,placa,loja_codigo,tipo_lavagem,status,recebida_em,origem,mensagem_id,observacao,criado_em,atualizado_em) VALUES (?,?,?,?,?,'SOLICITACAO',?,?,?,?,?,?)").bind(id,c.numero,c.placa,c.loja,c.tipo,sent,origem,msgId,c.obs||null,date,date).run();
  if(ret.meta?.changes===1){await audit(env,"CRIAR_SOLICITACAO",user?.id||null,id);return true;}
  return false;
 }
@@ -220,7 +221,7 @@ async function importEmail(r,env,u,relay=false){
  const msgId=typeof b.message_id==="string"?b.message_id.slice(0,150):null;
  let novos=0,repetidos=0;
  for(const v of found){
-  if(await saveCard(env,{...v,loja,tipo:"Nao informado",obs:""},"IMPORTACAO_EMAIL",u,msgId))novos++;
+  if(await saveCard(env,{...v,loja,tipo:"Nao informado",obs:""},"IMPORTACAO_EMAIL",u,msgId,relay?b.recebido_em:null))novos++;
   else repetidos++;
  }
  return response({sucesso:true,criados:novos,duplicados:repetidos,encontrados:found.length});
@@ -233,6 +234,15 @@ async function finalize(r,env,u,id){
  if(result.meta?.changes!==1)return response({erro:"Ja concluido, nao encontrado ou sem permissao."},409);
  await audit(env,"FINALIZAR_LAVAGEM",u.id,id);
  return response({concluido:true});
+}
+async function reopen(r,env,u,id){
+ if(!sameOrigin(r))return response({erro:"Origem nao autorizada."},403);
+ if(!/^[0-9a-f-]{36}$/.test(id))return response({erro:"Identificador invalido."},400);
+ const loja=isManager(u)?"":u.loja_codigo,date=now();
+ const result=await env.DB.prepare("UPDATE ct_solicitacoes SET status='SOLICITACAO',finalizada_em=NULL,finalizada_por=NULL,atualizado_em=? WHERE id=? AND status='CONCLUIDO' AND (?='' OR loja_codigo=?)").bind(date,id,loja,loja).run();
+ if(result.meta?.changes!==1)return response({erro:"Registro nao encontrado, sem acesso ou ja reaberto."},409);
+ await audit(env,"REABRIR_LAVAGEM",u.id,id);
+ return response({reaberto:true});
 }
 async function exportCards(env,u){
  if(!isAdmin(u))return response({erro:"Somente C&O."},403);
@@ -265,6 +275,7 @@ export async function contingenciaApi(r,env,url){
   if(path===PREFIX+"/cards"&&r.method==="POST")return createCard(r,env,u);
   if(path===PREFIX+"/email/colar"&&r.method==="POST")return importEmail(r,env,u);
   if(path.startsWith(PREFIX+"/finalizar/")&&r.method==="POST")return finalize(r,env,u,path.slice((PREFIX+"/finalizar/").length));
+  if(path.startsWith(PREFIX+"/reabrir/")&&r.method==="POST")return reopen(r,env,u,path.slice((PREFIX+"/reabrir/").length));
   if(path===PREFIX+"/exportar"&&r.method==="GET")return exportCards(env,u);
   return response({erro:"Rota ou metodo invalido."},404);
  }catch{return response({erro:"Falha interna na operacao de contingencia."},503);}
