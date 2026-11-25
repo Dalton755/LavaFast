@@ -129,3 +129,35 @@ Em caso de falha do relay, a opção de colar e-mail continua disponível.
 
 **Não alterar DNS do aplicativo original nem vincular dados reais antes
 de validar credenciais, backup e pelo menos um ciclo ponta a ponta.**
+
+## Cadastro rápido de funcionários — Admin ou C&O
+
+Página exclusiva: **`/contingencia/cadastro`**. Também aparece como
+**Cadastro rápido** no painel principal, somente para Admin/C&O logado.
+
+1. Entre no LavaFast com CPF/senha de Admin ou C&O.
+2. Abra **Cadastro rápido** (menu superior ou aba Equipe).
+3. Preencha nome completo, CPF, cargo e loja.
+4. O navegador gera uma senha temporária aleatória automaticamente.
+5. Clique **Salvar funcionário no Cloudflare**. O servidor verifica
+   permissão e CPF único, gera salt/hash e salva no banco **D1**.
+6. Na confirmação, copie a senha temporária uma única vez e entregue
+   individualmente ao colaborador por canal privado.
+7. Clique **Cadastrar outro**: mantém cargo e loja para acelerar a inclusão
+   de funcionários do mesmo setor, limpando CPF, nome e senha.
+
+A lista de equipe tem pesquisa por nome, cargo e os quatro últimos
+dígitos do CPF. Admin/C&O pode **editar nome, cargo e loja**,
+**desativar/reativar** e **redefinir senha temporária** de outra conta.
+A atualização da loja/cargo e redefinição de senha invalidam sessões
+anteriores da conta alterada. Não é permitido alterar o próprio cargo
+por esta tela para evitar bloqueio administrativo.
+
+Segurança: os cadastros não dependem de Supabase; CPF integral não é
+gravado (HMAC + final), a senha não é armazenada em texto e exige troca
+obrigatória no primeiro login. A API valida perfil no servidor, independentemente
+da existência do botão na interface. Não compartilhe CPF ou senhas no chat.
+
+O novo cadastro **não recupera registros históricos bloqueados**.
+Os colaboradores devem ser incluídos na contingência por um Admin ou
+C&O até futura conciliação com o Supabase restaurado.
