@@ -1,4 +1,5 @@
 import { verificarEstruturaContingencia, prepararEstruturaContingencia } from "./contingenciaSchema.js";
+import { extrairSolicitacoesLocaliza, verificarMensagemLocaliza } from "./localizaEmail.js";
 // LavaFast Contingencia: sem dependencias de Supabase, Render ou Vercel.
 // Apenas estrutura D1 isolada; CPF nunca armazenado em texto, financeiro inexistente.
 const PREFIX="/api/contingencia";
@@ -246,43 +247,101 @@ async function createCard(r,env,u){
  const created=await saveCard(env,c,"MANUAL",u);
  return response({criado:created,mensagem:created?"Solicitacao criada.":"SL ja existente."},created?201:409);
 }
-function parseEmail(text){
- const linhas=String(text||"").replace(/\r/g,"").replace(/\*/g,"").split("\n").map(x=>x.trim()).filter(Boolean);
- const found=[],seen=new Set();
- for(let i=0;i<linhas.length;i++){
-  let num=null,placa=null;
-  const match=linhas[i].match(/^(\d{7,12})\s+([A-Z]{3}[0-9][A-Z0-9][0-9]{2})(?:\s|$)/i);
-  if(match){num=match[1];placa=match[2];}
-  else if(/^\d{7,12}$/.test(linhas[i])&&/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/i.test(linhas[i+1]||"")){
-    num=linhas[i];placa=linhas[i+1];
-  }
-  if(num&&!seen.has(num)){seen.add(num);found.push({numero:num,placa:placa.toUpperCase()});}
-  if(found.length>=100)break;
- }
- return found;
+// A tabela e criada de maneira idempotente somente em chamada AUTORIZADA:
+// aguenta Workers que receberam codigo antes da migration D1 ser aplicada.
+async function garantirAuditoriaGmail(env) {
+ await env.DB.prepare(`CREATE TABLE IF NOT EXISTS ct_email_importacoes (
+   message_id TEXT PRIMARY KEY NOT NULL,
+   loja_codigo TEXT NOT NULL CHECK(loja_codigo IN ('MOOCA','CENTRAL_PLAZA')),
+   recebido_em TEXT NOT NULL, processado_em TEXT NOT NULL,
+   identificados INTEGER NOT NULL DEFAULT 0,
+   criados INTEGER NOT NULL DEFAULT 0,
+   duplicados INTEGER NOT NULL DEFAULT 0,
+   status TEXT NOT NULL CHECK(status IN ('PROCESSADO','DUPLICADO'))
+ )`).run();
+ await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_ct_email_importacoes_processado ON ct_email_importacoes(processado_em DESC)").run();
 }
+
 async function importEmail(r,env,u,relay=false){
  if(relay){
   if(typeof env.CT_EMAIL_RELAY_SECRET!=="string"||
-    !await secretEq(r.headers.get("x-lavafast-relay"),env.CT_EMAIL_RELAY_SECRET))
-   return response({erro:"Integracao nao autorizada."},403);
+   !await secretEq(r.headers.get("x-lavafast-relay"),env.CT_EMAIL_RELAY_SECRET))
+   return response({erro:"Integracao Gmail nao autorizada."},403);
  }else if(!sameOrigin(r))return response({erro:"Origem nao autorizada."},403);
- let b;try{b=await body(r,30000);}catch{return response({erro:"Email invalido ou muito grande."},400);}
- const loja=b.loja_codigo;
+ let b;
+ try{b=await body(r,30000);}catch{return response({erro:"Mensagem invalida ou muito grande."},400);}
+ const texto=typeof b?.texto==="string"?b.texto:"";
+ if(!texto.trim()||texto.length>26000)
+   return response({erro:"Conteudo da solicitacao vazio ou muito grande."},400);
+ const extraido=extrairSolicitacoesLocaliza(texto);
+ let loja=b?.loja_codigo;
+ if(relay){
+   // Remetente, assunto e agencia sao conferidos antes de gravar qualquer SL.
+   // O Apps Script associado a conta Gmail manda os cabecalhos originais.
+   if(!verificarMensagemLocaliza(b?.remetente,b?.assunto))
+     return response({erro:"Remetente ou assunto nao autorizado."},403);
+   if(!extraido.loja_codigo || extraido.loja_codigo!==loja)
+     return response({erro:"Agencia ausente, desconhecida ou diferente da loja enviada."},422);
+   if(typeof b.message_id!=="string"||!/^[a-zA-Z0-9_-]{12,150}$/.test(b.message_id))
+     return response({erro:"Gmail message_id invalido."},400);
+   if(typeof b.recebido_em!=="string"||!Number.isFinite(Date.parse(b.recebido_em)))
+     return response({erro:"Data de recebimento invalida."},400);
+   const quando=Date.parse(b.recebido_em);
+   if(quando>Date.now()+60000||quando<Date.now()-14*86400000)
+     return response({erro:"Data fora da janela de 14 dias."},422);
+ }else if(extraido.agencia && extraido.loja_codigo && extraido.loja_codigo!==loja){
+   return response({erro:"A agencia no email nao pertence a loja escolhida."},422);
+ }
  if(!LOJAS.includes(loja))return response({erro:"Loja invalida."},400);
  if(u&&!isManager(u)&&loja!==u.loja_codigo)return response({erro:"Sem acesso a loja."},403);
- const texto=String(b.texto||"");
- if(!texto.trim()||texto.length>26000)return response({erro:"Texto do email invalido."},400);
- const found=parseEmail(texto);
- if(!found.length)return response({erro:"Nenhuma SL e placa encontradas."},422);
- const msgId=typeof b.message_id==="string"?b.message_id.slice(0,150):null;
- let novos=0,repetidos=0;
- for(const v of found){
-  if(await saveCard(env,{...v,loja,tipo:"Nao informado",obs:""},"IMPORTACAO_EMAIL",u,msgId,relay?b.recebido_em:null))novos++;
-  else repetidos++;
+ const vehicles=extraido.veiculos;
+ if(!vehicles.length)return response({erro:"Nenhuma SL com placa reconhecida."},422);
+ const msgId=relay?b.message_id:null;
+ let criados=0,duplicados=0;
+ if(relay)await garantirAuditoriaGmail(env);
+ for(const v of vehicles){
+  const inserted=await saveCard(env,{...v,loja,tipo:"Nao informado",obs:""},
+    "IMPORTACAO_EMAIL",u,msgId,relay?b.recebido_em:null);
+  if(inserted)criados++;else duplicados++;
  }
- return response({sucesso:true,criados:novos,duplicados:repetidos,encontrados:found.length});
+ if(relay){
+  const processado=now();
+  await env.DB.prepare(`INSERT INTO ct_email_importacoes
+   (message_id,loja_codigo,recebido_em,processado_em,identificados,criados,duplicados,status)
+   VALUES(?,?,?,?,?,?,?,?)
+   ON CONFLICT(message_id) DO UPDATE SET
+   processado_em=excluded.processado_em,
+   identificados=excluded.identificados,
+   criados=ct_email_importacoes.criados+excluded.criados,
+   duplicados=ct_email_importacoes.duplicados+excluded.duplicados,
+   status=excluded.status`)
+   .bind(msgId,loja,new Date(b.recebido_em).toISOString(),processado,
+     vehicles.length,criados,duplicados,criados?"PROCESSADO":"DUPLICADO").run();
+ }
+ return response({sucesso:true,criados,duplicados,encontrados:vehicles.length,
+   origem:relay?"GMAIL_AUTOMATICO":"IMPORTACAO_MANUAL",loja_codigo:loja});
 }
+
+async function statusGmail(env,u){
+ if(!isAdmin(u))return response({erro:"Acesso exclusivo de Admin ou C&O."},403);
+ await garantirAuditoriaGmail(env);
+ const since=new Date(Date.now()-24*3600000).toISOString();
+ const totals=await env.DB.prepare(`SELECT
+   COUNT(*) AS mensagens,
+   COALESCE(SUM(criados),0) AS cards_criados,
+   COALESCE(SUM(duplicados),0) AS duplicados
+   FROM ct_email_importacoes WHERE processado_em>=?`).bind(since).first();
+ const last=await env.DB.prepare(`SELECT loja_codigo,recebido_em,processado_em,
+   identificados,criados,duplicados,status
+   FROM ct_email_importacoes ORDER BY processado_em DESC LIMIT 12`).all();
+ return response({
+   relay_configurado:typeof env.CT_EMAIL_RELAY_SECRET==="string"&&env.CT_EMAIL_RELAY_SECRET.length>=32,
+   periodo:"ultimas_24_horas",
+   resumo:{mensagens:totals?.mensagens||0,cards_criados:totals?.cards_criados||0,duplicados:totals?.duplicados||0},
+   ultimas:(last.results||[]).map(row=>row)
+ });
+}
+
 async function finalize(r,env,u,id){
  if(!sameOrigin(r))return response({erro:"Origem nao autorizada."},403);
  if(!/^[0-9a-f-]{36}$/.test(id))return response({erro:"Identificador invalido."},400);
@@ -339,6 +398,7 @@ export async function contingenciaApi(r,env,url){
   if(path===PREFIX+"/cards"&&r.method==="GET")return listCards(env,u,url);
   if(path===PREFIX+"/cards"&&r.method==="POST")return createCard(r,env,u);
   if(path===PREFIX+"/email/colar"&&r.method==="POST")return importEmail(r,env,u);
+  if(path===PREFIX+"/email/status"&&r.method==="GET")return statusGmail(env,u);
   if(path.startsWith(PREFIX+"/finalizar/")&&r.method==="POST")return finalize(r,env,u,path.slice((PREFIX+"/finalizar/").length));
   if(path.startsWith(PREFIX+"/reabrir/")&&r.method==="POST")return reopen(r,env,u,path.slice((PREFIX+"/reabrir/").length));
   if(path===PREFIX+"/exportar"&&r.method==="GET")return exportCards(env,u);
