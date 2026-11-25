@@ -79,38 +79,74 @@ nos cards, nem na API deste ambiente.
 A data/hora da SL criada manualmente ou de email colado usa a data de
 inclusão. O relay automático do Gmail utiliza a data original do email.
 
-## 5 — Encaminhamento automático de e-mails (opcional, recomendável)
+## 5 — Cards criados automaticamente ao receber email (Gmail)
 
-Esta etapa depende da conta Google **que recebe as mensagens**. Não é
-necessário conectar o Supabase nem o Render.
+**Sem Supabase, Render ou Vercel.** O Gmail e monitorado com um Google
+Apps Script autorizado na conta que recebe as solicitacoes da Localiza.
+O Google permite gatilho agendado a cada **1 minuto**. Nao e acionamento
+instantaneo por push; pode haver variacao de horario e cotas do Google.
 
-1. Em Workers & Pages → lavafast → Settings → Variables and Secrets,
-   crie um Secret `CT_EMAIL_RELAY_SECRET` com 32 ou mais caracteres.
-2. Abra `https://script.google.com/` autenticado na conta que recebe as
-   solicitações da Localiza e crie um projeto Apps Script.
-3. Copie o código de
-   `integracoes/GoogleAppsScript_LavaFast_CT.gs` (neste repositório).
-4. Em **Project Settings → Script Properties**, cadastre:
-   - `LAVAFAST_CT_URL` =
+Fluxo: Gmail (remetente e assunto da Localiza) -> Apps Script ->
+Webhook autenticado do Worker -> banco D1 `ct_solicitacoes` ->
+aba **Solicitacoes** de Mooca/Central Plaza. A tela de operacao atualiza
+os cards a cada 30 segundos enquanto aberta.
+
+### Ativar
+
+1. Acesse **Cloudflare → Workers & Pages → lavafast → Settings →
+   Variables and Secrets**. Adicione um **Secret** `CT_EMAIL_RELAY_SECRET`,
+   com valor aleatorio exclusivo de pelo menos 32 caracteres. **Nao
+   altere** `CT_AUTH_PEPPER` nem `CT_BOOTSTRAP_SECRET`.
+2. Na conta Gmail que recebe as solicitacoes, abra
+   `https://script.google.com/home/projects/create`. Crie o projeto
+   **LavaFast Gmail Contingencia**.
+3. No editor do Apps Script, substitua o codigo pelo conteudo do arquivo
+   `integracoes/GoogleAppsScript_LavaFast_CT.gs` deste repositorio.
+4. Em **Configuracoes do projeto → Propriedades do script**, crie
+   exatamente estas propriedades:
+   - **LAVAFAST_CT_URL**:
      `https://lavafast.rochadalton00.workers.dev/api/contingencia/email/relay`
-   - `LAVAFAST_CT_EMAIL_SECRET` = mesmo valor do segredo do Worker.
-5. Execute uma vez a função `instalarLavaFastCT` e aceite as permissões
-   necessárias para ler Gmail e enviar HTTPS.
-6. Um gatilho verificará as mensagens a cada 5 minutos (não em tempo
-   real). Apenas mensagens recebidas **a partir da instalação** entram
-   automaticamente.
+   - **LAVAFAST_CT_EMAIL_SECRET**: mesmo valor de `CT_EMAIL_RELAY_SECRET`
+     salvo como Secret no Cloudflare. **Nao cole nenhum segredo no codigo
+     do projeto ou em mensagens de chat.**
+5. Salve e execute a funcao **`instalarLavaFastCT`** UMA vez. Aceite
+   as permissoes Gmail e UrlFetch na conta que de fato recebe as SLs.
+   Esse passo cria o gatilho automaticamente (1 minuto). Tambem
+   verifica mensagens recebidas nas **ultimas 24 horas**, para nao perder
+   solicitacoes de hoje.
+6. No LavaFast, entre como **Admin ou C&O** e abra
+   **✉ E-mail → Sincronizacao automatica**. O painel mostra e-mails
+   processados, cards criados nas ultimas 24h e a ultima importacao.
 
-O script identifica o remetente `no-reply@localiza.com` e os códigos
-de agência do aplicativo original: `ACSMC` (Mooca) e
-`ACUCP` (Central Plaza). Agências desconhecidas **não são
-importadas**, para evitar registros na loja errada.
+### Validacao e resiliencia
 
-Para parar a integração, execute `pararLavaFastCT`.
+- Remetente exato: `no-reply@localiza.com`.
+- Assunto: `Solicitação de Lavagem` (acentos normalizados).
+- Agencia `ACSMC` vira loja **Mooca**; `ACUCP` vira
+  **Central Plaza**. Agencia desconhecida ou discordante e rejeitada.
+- Extrai cada numero SL com sua placa. Um email pode gerar varios cards.
+  O valor em reais e ignorado e **nunca e gravado no D1 operacional**.
+- Cada card com origem **Recebido por e-mail** aparece diretamente em
+  Solicitações. O funcionario finaliza e o card vai para Concluidos,
+  com registro do tempo total.
+- Duplicatas por SL sao impedidas no D1. O script marca mensagem como
+  enviada somente apos resposta confirmada do Worker. Se houver falha
+  temporaria, tenta novamente; uma importacao repetida nao recria card.
+- Usa limite de 40 mensagens por rodada para proteger cotas.
+- Para verificar entrega antiga, execute manualmente
+  `recuperarUltimas24hLavaFastCT` no Apps Script.
+- Para parar a automacao sem apagar cards, execute `pararLavaFastCT`.
+- Se Gmail ou relays falharem, a aba **✉ E-mail** continua permitindo
+  importar uma mensagem colando seu corpo, sem interromper a operacao.
 
-**Atenção:** este fluxo usa GmailApp/Apps Script; confira os gatilhos,
-cotas de execução e autorização da conta. O usuário final deve validar
-uma SL real em cada loja antes de confiar no recebimento automático.
-Em caso de falha do relay, a opção de colar e-mail continua disponível.
+**OBS:** `GET /api/contingencia/config` com
+`email_relay_habilitado: true` confirma somente que o **Worker tem um
+secret configurado**. Nao confirma que o Apps Script foi instalado ou
+que uma mensagem realmente foi entregue. O diagnostico efetivo e o
+painel `GET /api/contingencia/email/status` (Admin/C&O autenticado).
+
+O usuario deve validar uma SL em cada loja antes de depender do
+recebimento automatico.
 
 ## Regras de segurança e de migração futura
 
