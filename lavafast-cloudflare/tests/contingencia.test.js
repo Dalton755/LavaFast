@@ -68,6 +68,36 @@ test("contingencia inicia BLOQUEADA sem segredo e sem depender do Supabase",asyn
  }finally{db.close();}
 });
 
+test("primeiro administrador prepara D1 quando migrations nao foram aplicadas",async()=>{
+ const db=new DatabaseSync(":memory:");
+ try {
+  db.exec("PRAGMA foreign_keys=ON;");
+  // Reproduz o estado encontrado no ambiente real: Worker publicado com
+  // secrets ativos, mas migration 0006 pendente.
+  for(const name of ["0001_piloto_lojas.sql","0002_operacoes_estrutura.sql",
+   "0003_piloto_operacao.sql","0004_hml_usuarios.sql","0005_login_cpf_bridge.sql"]) db.exec(file(name));
+  const e=env(db);
+  const previous=await call("/api/contingencia/config",e);
+  assert.equal(previous.result.pronto,true);
+  assert.equal(previous.result.estrutura_pronta,false);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name LIKE 'ct_%'").get().n,0);
+  const invalid=await call("/api/contingencia/bootstrap",e,"POST",
+   {cpf:ADMIN_CPF,nome:"Administrador Exemplo",senha:ADMIN_PASSWORD});
+  assert.equal(invalid.status,403);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name LIKE 'ct_%'").get().n,0);
+  const created=await call("/api/contingencia/bootstrap",e,"POST",
+   {cpf:ADMIN_CPF,nome:"Administrador Exemplo",senha:ADMIN_PASSWORD},"",{"x-ct-setup":SECRET});
+  assert.equal(created.status,201);
+  const current=await call("/api/contingencia/config",e);
+  assert.equal(current.result.estrutura_pronta,true);
+  const logged=await call("/api/contingencia/login",e,"POST",
+   {cpf:ADMIN_CPF,senha:ADMIN_PASSWORD});
+  assert.equal(logged.status,200);
+  assert.equal(logged.result.usuario.perfil,"CO");
+  assert.equal(db.prepare("PRAGMA foreign_key_check").all().length,0);
+ }finally{db.close();}
+});
+
 test("bootstrap protegido, senha CPF, sessao HttpOnly, bloqueios e logout",async()=>{
  const db=dbLocal();
  try{
