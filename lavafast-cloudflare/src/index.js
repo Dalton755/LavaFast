@@ -4,6 +4,7 @@ import { cpfSeguroApi } from "./cpfSeguroApi.js";
 import { paginaSeguraHtml, scriptSeguroJs } from "./pilotoSeguroPage.js";
 import { contingenciaApi } from "./contingenciaApi.js";
 import { paginaContingenciaHtml, scriptContingenciaJs } from "./contingenciaPage.js";
+import { paginaCadastroRapidoHtml, scriptCadastroRapidoJs } from "./cadastroRapidoPage.js";
 
 // Piloto isolado. Nunca faz consultas ao Supabase nem recebe eventos de producao.
 const responder = (conteudo, status = 200) => new Response(JSON.stringify(conteudo), {
@@ -45,6 +46,34 @@ export default {
         headers: {
           "content-type": "text/javascript; charset=utf-8",
           "cache-control": "no-store", "x-content-type-options": "nosniff"
+        }
+      });
+    }
+
+    // Ambiente de cadastro rapido — API valida perfil no servidor e persiste D1.
+    if (url.pathname === "/contingencia/cadastro" || url.pathname === "/contingencia/cadastro/") {
+      if (request.method !== "GET") return responder({ erro: "Metodo nao permitido." }, 405);
+      if (env.ENVIRONMENT !== "homologacao") return responder({ erro: "Nao encontrado." }, 404);
+      return new Response(paginaCadastroRapidoHtml, {
+        status: 200,
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "no-referrer",
+          "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      });
+    }
+    if (url.pathname === "/contingencia/cadastro.js") {
+      if (request.method !== "GET") return responder({ erro: "Metodo nao permitido." }, 405);
+      if (env.ENVIRONMENT !== "homologacao") return responder({ erro: "Nao encontrado." }, 404);
+      return new Response(scriptCadastroRapidoJs, {
+        headers: {
+          "content-type": "text/javascript; charset=utf-8",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff"
         }
       });
     }
