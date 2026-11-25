@@ -8,9 +8,13 @@ const LOJAS=["MOOCA","CENTRAL_PLAZA"];
 const response=(obj,status=200,headers={})=>new Response(JSON.stringify(obj),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store","x-content-type-options":"nosniff",...headers}});
 const now=()=>new Date().toISOString();
 const enabled=env=>env.ENVIRONMENT==="homologacao"&&!!env.DB&&typeof env.CT_BOOTSTRAP_SECRET==="string"&&env.CT_BOOTSTRAP_SECRET.length>=32&&typeof env.CT_AUTH_PEPPER==="string"&&env.CT_AUTH_PEPPER.length>=32;
-const role=c=>c==="C&O"?"CO":c==="Analista"?"ANALISTA":"OPERACAO";
-const isAdmin=u=>u?.cargo==="C&O";
-const isManager=u=>u?.cargo==="C&O"||u?.cargo==="Analista";
+// O cargo permanece controlado pelo responsavel; apenas cargos gerenciais
+// explicitamente reconhecidos podem administrar cadastros.
+const cargoNormalizado=c=>String(c||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
+const cargoAdmin=c=>["C&O","ADMIN","ADMINISTRADOR"].includes(cargoNormalizado(c));
+const role=c=>cargoAdmin(c)?"CO":cargoNormalizado(c)==="ANALISTA"?"ANALISTA":"OPERACAO";
+const isAdmin=u=>Boolean(u&&cargoAdmin(u.cargo));
+const isManager=u=>isAdmin(u)||role(u?.cargo)==="ANALISTA";
 const sameOrigin=r=>r.headers.get("Origin")===new URL(r.url).origin;
 const cookie=(token,maxAge)=>COOKIE+"="+token+"; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age="+maxAge;
 const validName=n=>typeof n==="string"&&n.trim().length>=3&&n.trim().length<=120;
@@ -126,17 +130,20 @@ async function passwordChange(r,env,u){
  return response({sucesso:true,requer_novo_login:true},200,{"set-cookie":cookie("",0)});
 }
 async function employeeCreate(r,env,u){
- if(!isAdmin(u))return response({erro:"Somente C&O pode cadastrar funcionarios."},403);
+ if(!isAdmin(u))return response({erro:"Apenas Admin ou C&O podem cadastrar funcionarios."},403);
  if(!sameOrigin(r))return response({erro:"Origem nao autorizada."},403);
  let b;try{b=await body(r,2500);}catch{return response({erro:"Dados invalidos."},400);}
  const cpf=cpfLimpo(b.cpf),nome=b.nome?.trim(),cargo=b.cargo?.trim(),loja=b.loja_codigo,pwd=b.senha_temporaria;
  if(!cpf||!validName(nome)||!validCargo(cargo)||!validPassword(pwd)||
  ![...LOJAS,"TODAS"].includes(loja)||(role(cargo)==="OPERACAO"&&loja==="TODAS"))
   return response({erro:"Informe CPF, nome, cargo, loja e senha temporaria de 12+ caracteres."},400);
+ const cpfHmac=await hmac(env.CT_AUTH_PEPPER,cpf);
+ const existente=await env.DB.prepare("SELECT id FROM ct_funcionarios WHERE cpf_hmac=?").bind(cpfHmac).first();
+ if(existente)return response({erro:"Este CPF ja esta cadastrado. Use a lista para editar ou reativar o acesso."},409);
  const id=crypto.randomUUID(),salt=randomHex(),hash=await passHash(salt,pwd,env.CT_AUTH_PEPPER),stamp=now();
  try{
-  await env.DB.prepare("INSERT INTO ct_funcionarios(id,cpf_hmac,cpf_final,nome,cargo,loja_codigo,ativo,senha_salt,senha_hash,trocar_senha,criado_em,atualizado_em) VALUES (?,?,?,?,?,?,1,?,?,1,?,?)").bind(id,await hmac(env.CT_AUTH_PEPPER,cpf),cpf.slice(-4),nome,cargo,loja,salt,hash,stamp,stamp).run();
- }catch{return response({erro:"Funcionario ja cadastrado ou dados invalidos."},409);}
+  await env.DB.prepare("INSERT INTO ct_funcionarios(id,cpf_hmac,cpf_final,nome,cargo,loja_codigo,ativo,senha_salt,senha_hash,trocar_senha,criado_em,atualizado_em) VALUES (?,?,?,?,?,?,1,?,?,1,?,?)").bind(id,cpfHmac,cpf.slice(-4),nome,cargo,loja,salt,hash,stamp,stamp).run();
+ }catch{return response({erro:"Nao foi possivel cadastrar. Confira se o CPF ja existe."},409);}
  await audit(env,"CADASTRAR_FUNCIONARIO",u.id);
  return response({criado:true,funcionario:{id,nome,cargo,loja_codigo:loja,cpf_final:cpf.slice(-4)}},201);
 }
@@ -150,6 +157,47 @@ async function employeeToggle(r,env,u){
  if(!b.ativo)await env.DB.prepare("DELETE FROM ct_sessoes WHERE funcionario_id=?").bind(b.id).run();
  await audit(env,b.ativo?"REATIVAR_FUNCIONARIO":"INATIVAR_FUNCIONARIO",u.id);
  return response({salvo:true});
+}
+// Edita somente nome, cargo e loja. CPF/HMAC e identificador permanecem
+// estaveis. Toda mudanca administrativa revoga sessoes ja abertas.
+async function employeeEdit(r,env,u){
+ if(!isAdmin(u))return response({erro:"Acesso exclusivo do Admin ou C&O."},403);
+ if(!sameOrigin(r))return response({erro:"Origem nao autorizada."},403);
+ let b;try{b=await body(r,1800);}catch{return response({erro:"Dados invalidos."},400);}
+ const id=b?.id,nome=b?.nome?.trim(),cargo=b?.cargo?.trim(),loja=b?.loja_codigo;
+ if(typeof id!=="string"||id.length>64||!validName(nome)||!validCargo(cargo)||
+   ![...LOJAS,"TODAS"].includes(loja)||(role(cargo)==="OPERACAO"&&loja==="TODAS"))
+  return response({erro:"Informe nome, cargo e loja validos."},400);
+ // Evita bloqueio ou mudanca silenciosa do proprio administrador.
+ if(id===u.id)return response({erro:"Para alterar sua propria conta, solicite outro C&O."},403);
+ const original=await env.DB.prepare("SELECT id FROM ct_funcionarios WHERE id=?").bind(id).first();
+ if(!original)return response({erro:"Funcionario nao encontrado."},404);
+ const changed=await env.DB.prepare("UPDATE ct_funcionarios SET nome=?,cargo=?,loja_codigo=?,atualizado_em=? WHERE id=?")
+ .bind(nome,cargo,loja,now(),id).run();
+ if(changed.meta?.changes!==1)return response({erro:"Cadastro nao atualizado."},409);
+ await env.DB.prepare("DELETE FROM ct_sessoes WHERE funcionario_id=?").bind(id).run();
+ await audit(env,"ATUALIZAR_FUNCIONARIO",u.id);
+ return response({salvo:true,funcionario:{id,nome,cargo,loja_codigo:loja}});
+}
+
+// Recuperacao interna enquanto o Supabase estiver bloqueado.
+// Nunca retorna senha em claro: o Admin informa uma senha NOVA temporaria
+// que fica visivel somente no proprio navegador no ato do reset.
+async function employeeResetPassword(r,env,u){
+ if(!isAdmin(u))return response({erro:"Acesso exclusivo do Admin ou C&O."},403);
+ if(!sameOrigin(r))return response({erro:"Origem nao autorizada."},403);
+ let b;try{b=await body(r,1600);}catch{return response({erro:"Dados invalidos."},400);}
+ if(typeof b?.id!=="string"||b.id.length>64||b.id===u.id||!validPassword(b.senha_temporaria))
+  return response({erro:"Funcionario ou senha temporaria invalidos."},400);
+ const found=await env.DB.prepare("SELECT id FROM ct_funcionarios WHERE id=?").bind(b.id).first();
+ if(!found)return response({erro:"Funcionario nao encontrado."},404);
+ const salt=randomHex(),hash=await passHash(salt,b.senha_temporaria,env.CT_AUTH_PEPPER);
+ const changed=await env.DB.prepare("UPDATE ct_funcionarios SET senha_salt=?,senha_hash=?,trocar_senha=1,atualizado_em=? WHERE id=?")
+ .bind(salt,hash,now(),b.id).run();
+ if(changed.meta?.changes!==1)return response({erro:"Nao foi possivel redefinir a senha."},409);
+ await env.DB.prepare("DELETE FROM ct_sessoes WHERE funcionario_id=?").bind(b.id).run();
+ await audit(env,"REDEFINIR_SENHA_TEMPORARIA",u.id);
+ return response({salvo:true,requer_troca:true});
 }
 function store(url,u){
  const requested=url.searchParams.get("loja")||"";
@@ -286,6 +334,8 @@ export async function contingenciaApi(r,env,url){
   }
   if(path===PREFIX+"/funcionarios"&&r.method==="POST")return employeeCreate(r,env,u);
   if(path===PREFIX+"/funcionarios/status"&&r.method==="POST")return employeeToggle(r,env,u);
+  if(path===PREFIX+"/funcionarios/atualizar"&&r.method==="POST")return employeeEdit(r,env,u);
+  if(path===PREFIX+"/funcionarios/redefinir-senha"&&r.method==="POST")return employeeResetPassword(r,env,u);
   if(path===PREFIX+"/cards"&&r.method==="GET")return listCards(env,u,url);
   if(path===PREFIX+"/cards"&&r.method==="POST")return createCard(r,env,u);
   if(path===PREFIX+"/email/colar"&&r.method==="POST")return importEmail(r,env,u);
