@@ -2,6 +2,8 @@ import { paginaOperacaoHtml, scriptOperacaoJs } from "./pilotoPage.js";
 import { pilotoApi } from "./pilotoApi.js";
 import { cpfSeguroApi } from "./cpfSeguroApi.js";
 import { paginaSeguraHtml, scriptSeguroJs } from "./pilotoSeguroPage.js";
+import { contingenciaApi } from "./contingenciaApi.js";
+import { paginaContingenciaHtml, scriptContingenciaJs } from "./contingenciaPage.js";
 
 // Piloto isolado. Nunca faz consultas ao Supabase nem recebe eventos de producao.
 const responder = (conteudo, status = 200) => new Response(JSON.stringify(conteudo), {
@@ -16,6 +18,36 @@ const responder = (conteudo, status = 200) => new Response(JSON.stringify(conteu
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    // Contingencia independente. Sem acesso ao Supabase, Render ou dados de homologacao.
+    const respostaContingencia = await contingenciaApi(request, env, url);
+    if (respostaContingencia) return respostaContingencia;
+
+    if (url.pathname === "/contingencia" || url.pathname === "/contingencia/") {
+      if (request.method !== "GET") return responder({ erro: "Metodo nao permitido." }, 405);
+      if (env.ENVIRONMENT !== "homologacao") return responder({ erro: "Nao encontrado." }, 404);
+      return new Response(paginaContingenciaHtml, {
+        status: 200,
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY",
+          "referrer-policy": "no-referrer",
+          "content-security-policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+        }
+      });
+    }
+    if (url.pathname === "/contingencia/app.js") {
+      if (request.method !== "GET") return responder({ erro: "Metodo nao permitido." }, 405);
+      if (env.ENVIRONMENT !== "homologacao") return responder({ erro: "Nao encontrado." }, 404);
+      return new Response(scriptContingenciaJs, {
+        headers: {
+          "content-type": "text/javascript; charset=utf-8",
+          "cache-control": "no-store", "x-content-type-options": "nosniff"
+        }
+      });
+    }
 
     // Nova camada autenticada: CPF + senha atuais validados no backend legado; sessao curta D1.
     const respostaAutenticada = await cpfSeguroApi(request, env, url);
