@@ -70,7 +70,8 @@ function sincronizarEmailLavaFastCT(){
       const payload=JSON.stringify({
         loja_codigo:loja,
         texto:texto.slice(0,26000),
-        message_id:m.getId()
+        message_id:m.getId(),
+        recebido_em:m.getDate().toISOString()
       });
       try{
         const resp=UrlFetchApp.fetch(url,{
