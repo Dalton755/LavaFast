@@ -174,6 +174,11 @@ test("cartoes por email colado, insercao manual, deduplicacao e finalizacao atom
   const completed=await call("/api/contingencia/cards?aba=concluidos",e,"GET",null,cookie);
   assert.equal(completed.result.total,1);
   assert.ok(completed.result.cards[0].tempo_total_segundos>=0);
+  const reopen=await call("/api/contingencia/reabrir/"+target.id,e,"POST",{},cookie);
+  assert.equal(reopen.status,200);
+  assert.equal((await call("/api/contingencia/cards?aba=solicitacoes",e,"GET",null,cookie)).result.total,3);
+  assert.equal((await call("/api/contingencia/cards?aba=concluidos",e,"GET",null,cookie)).result.total,0);
+  assert.equal((await call("/api/contingencia/reabrir/"+target.id,e,"POST",{},cookie)).status,409);
   const exportResponse=await call("/api/contingencia/exportar",e,"GET",null,cookie);
   assert.equal(exportResponse.result.total,3);
   assert.equal(db.prepare("PRAGMA foreign_key_check").all().length,0);
