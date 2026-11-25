@@ -223,7 +223,8 @@ test("relay autenticado recebe email com horario original sem valores financeiro
   const recebidoEm=new Date(Date.now()-15*60000).toISOString();
   const r=await call("/api/contingencia/email/relay",e,"POST",{
     loja_codigo:"MOOCA",texto:"Agência da Abertura: ACSMC\n12345698\nABC1D23\nR$ 999,00",
-    message_id:"email-de-teste-01",recebido_em:recebidoEm
+    message_id:"email-de-teste-01",recebido_em:recebidoEm,
+    remetente:"Localiza <no-reply@localiza.com>",assunto:"Solicitação de Lavagem"
   },"",{"x-lavafast-relay":e.CT_EMAIL_RELAY_SECRET});
   assert.equal(r.status,200);
   assert.equal(r.result.criados,1);
@@ -234,10 +235,23 @@ test("relay autenticado recebe email com horario original sem valores financeiro
   assert.ok(!JSON.stringify(row).includes("999,00"));
   assert.ok(!Object.hasOwn(row,"valor_centavos"));
   const retry=await call("/api/contingencia/email/relay",e,"POST",{
-    loja_codigo:"MOOCA",texto:"12345698\nABC1D23",message_id:"email-de-teste-01"
+    loja_codigo:"MOOCA",texto:"Agencia da Abertura: ACSMC\n12345698\nABC1D23",message_id:"email-de-teste-01",
+    remetente:"Localiza <no-reply@localiza.com>",assunto:"Solicitação de Lavagem",recebido_em:recebidoEm
   },"",{"x-lavafast-relay":e.CT_EMAIL_RELAY_SECRET});
   assert.equal(retry.status,200);
   assert.equal(retry.result.duplicados,1);
+  const adminLogin=await call("/api/contingencia/bootstrap",e,"POST",{
+    cpf:ADMIN_CPF,nome:"Administrador Teste",senha:ADMIN_PASSWORD
+  },"",{"x-ct-setup":SECRET});
+  assert.equal(adminLogin.status,201);
+  const signed=await call("/api/contingencia/login",e,"POST",{cpf:ADMIN_CPF,senha:ADMIN_PASSWORD});
+  const stat=await call("/api/contingencia/email/status",e,"GET",null,signed.headers.get("set-cookie").split(";")[0]);
+  assert.equal(stat.status,200);
+  assert.equal(stat.result.resumo.mensagens,1);
+  assert.equal(stat.result.resumo.cards_criados,1);
+  assert.ok(!JSON.stringify(stat.result).includes("999,00"));
+  assert.ok(!JSON.stringify(stat.result).includes("ABC1D23"));
+
  }finally{db.close();}
 });
 
