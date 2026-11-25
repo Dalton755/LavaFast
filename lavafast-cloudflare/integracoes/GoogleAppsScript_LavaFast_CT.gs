@@ -1,107 +1,167 @@
 /**
- * LavaFast Contingencia — encaminha email Gmail para Cloudflare sem Supabase.
- * Google Apps Script vinculado a CONTA QUE RECEBE as SLs.
+ * LavaFast — Gmail -> Cloudflare D1
+ * Verifica novas mensagens da Localiza automaticamente a cada 1 minuto.
+ * Nao depende de Supabase, Render ou Vercel.
  *
- * Antes de executar, criar estas Script Properties (segredos nao entram em codigo):
- * LAVAFAST_CT_URL = https://lavafast.rochadalton00.workers.dev/api/contingencia/email/relay
- * LAVAFAST_CT_EMAIL_SECRET = mesmo valor do CT_EMAIL_RELAY_SECRET do Worker
+ * Script Properties OBRIGATORIAS:
+ *   LAVAFAST_CT_URL = https://lavafast.rochadalton00.workers.dev/api/contingencia/email/relay
+ *   LAVAFAST_CT_EMAIL_SECRET = mesmo Secret CT_EMAIL_RELAY_SECRET do Worker.
  *
- * 1) Executar instalarLavaFastCT() uma vez (autorizando Gmail e UrlFetch).
- * 2) Um gatilho a cada 5 minutos verifica apenas emails NOVOS apos a instalacao.
- * 3) SL duplicada e ignorada pelo banco D1, com indice UNIQUE.
+ * Executar instalarLavaFastCT() UMA vez na conta Gmail QUE RECEBE as SLs.
+ * A primeira instalacao tambem recupera mensagens das ultimas 24h.
+ * Apenas emails com remetente no-reply@localiza.com, assunto exato
+ * "Solicitacao de Lavagem", agencia ACSMC / ACUCP.
  *
- * Ao instalar, registra a data inicial. Para recuperar SLs antigas,
- * use a opcao "Importar e-mail" no aplicativo ou revise o marco manualmente.
- *
- * Nao armazena CPF, senhas, valores de lavagem ou texto completo de email.
+ * Nunca registrar texto integral do email, valores, CPFs ou segredos.
+ * Duplicacao impedida no banco Cloudflare pelo numero unico da SL.
  */
-const PROPS=PropertiesService.getScriptProperties();
-const QUERY="from:no-reply@localiza.com newer_than:4d";
+const CT_PROPS = PropertiesService.getScriptProperties();
+const CT_URL_ESPERADA = "https://lavafast.rochadalton00.workers.dev/api/contingencia/email/relay";
+const CT_REMETENTE = "no-reply@localiza.com";
+const CT_ATRASO_SEGURANCA_MS = 6 * 3600000;
+const CT_JANELA_MAXIMA_MS = 14 * 86400000;
+const CT_MAXIMO_POR_EXECUCAO = 40;
 
-function instalarLavaFastCT() {
-  const url=PROPS.getProperty("LAVAFAST_CT_URL");
-  const secret=PROPS.getProperty("LAVAFAST_CT_EMAIL_SECRET");
-  if(!url||!/^https:\/\/[^/]+\/api\/contingencia\/email\/relay$/.test(url)){
-    throw new Error("Configure LAVAFAST_CT_URL em Script Properties.");
-  }
-  if(!secret||secret.length<32){
-    throw new Error("Configure LAVAFAST_CT_EMAIL_SECRET com 32+ caracteres.");
-  }
-  if(!PROPS.getProperty("CT_INICIO_MS"))PROPS.setProperty("CT_INICIO_MS",String(Date.now()));
-  const triggers=ScriptApp.getProjectTriggers();
-  for(const t of triggers){
-    if(t.getHandlerFunction()==="sincronizarEmailLavaFastCT")ScriptApp.deleteTrigger(t);
-  }
-  ScriptApp.newTrigger("sincronizarEmailLavaFastCT").timeBased().everyMinutes(5).create();
-  Logger.log("LavaFast CT instalado: verifica novas mensagens a cada 5 minutos.");
+function ctEnderecoRemetente_(from) {
+  const s = String(from || "").trim().toLowerCase();
+  const m = s.match(/<([^<>]+)>\s*$/);
+  return m ? m[1].trim() : s;
+}
+function ctAssuntoCorreto_(subject) {
+  return String(subject || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .trim().toLowerCase() === "solicitacao de lavagem";
+}
+function ctAgencia_(text) {
+  const match = String(text || "").match(/Ag[eê]ncia da Abertura\s*:\s*([A-Z0-9]+)/i);
+  return String(match ? match[1] : "").toUpperCase();
+}
+function ctLoja_(codigo) {
+  return codigo === "ACSMC" ? "MOOCA" :
+    codigo === "ACUCP" ? "CENTRAL_PLAZA" : null;
+}
+function ctValidarConfiguracao_() {
+  const url = CT_PROPS.getProperty("LAVAFAST_CT_URL");
+  const secret = CT_PROPS.getProperty("LAVAFAST_CT_EMAIL_SECRET");
+  if(url !== CT_URL_ESPERADA)throw Error("Configure LAVAFAST_CT_URL exatamente como no guia.");
+  if(!secret || secret.length < 32)throw Error("Configure LAVAFAST_CT_EMAIL_SECRET com 32+ caracteres.");
+  return {url,secret};
 }
 
-function sincronizarEmailLavaFastCT(){
-  const lock=LockService.getScriptLock();
-  if(!lock.tryLock(1000))return;
-  try{
-    const url=PROPS.getProperty("LAVAFAST_CT_URL");
-    const secret=PROPS.getProperty("LAVAFAST_CT_EMAIL_SECRET");
-    const start=Number(PROPS.getProperty("CT_INICIO_MS"));
-    if(!url||!secret||secret.length<32||!Number.isFinite(start)||start<=0)
-      throw new Error("Execute instalarLavaFastCT primeiro.");
+function instalarLavaFastCT() {
+  ctValidarConfiguracao_();
+  if(!CT_PROPS.getProperty("CT_INICIO_MS")) {
+    // Recuperacao controlada: somente ultimas 24 horas na primeira instalacao.
+    CT_PROPS.setProperty("CT_INICIO_MS", String(Date.now() - 86400000));
+  }
+  for(const t of ScriptApp.getProjectTriggers()) {
+    if(t.getHandlerFunction() === "sincronizarEmailLavaFastCT")ScriptApp.deleteTrigger(t);
+  }
+  ScriptApp.newTrigger("sincronizarEmailLavaFastCT").timeBased().everyMinutes(1).create();
+  Logger.log("LavaFast CT instalado. Verificacao automatica a cada 1 minuto.");
+  // Diagnostico inicial; se o Worker ainda nao estiver pronto, o trigger
+  // continua instalado e tentara novamente.
+  sincronizarEmailLavaFastCT();
+}
 
-    const threads=GmailApp.search(QUERY,0,70);
-    const messages=[];
-    for(const thread of threads){
-      for(const m of thread.getMessages()){
-        if(m.getDate().getTime()<start)continue;
-        const from=String(m.getFrom()||"").toLowerCase();
-        // Confira o remetente EXATO, evitando contatos parecidos.
-        if(!/(?:^|<)no-reply@localiza\.com(?:>|$)/.test(from))continue;
-        if(PROPS.getProperty("CT_SENT_"+m.getId()))continue;
-        messages.push(m);
+function sincronizarEmailLavaFastCT() {
+  const lock = LockService.getScriptLock();
+  if(!lock.tryLock(5000))return;
+  try {
+    const config = ctValidarConfiguracao_();
+    const inicio = Number(CT_PROPS.getProperty("CT_INICIO_MS"));
+    if(!Number.isFinite(inicio) || inicio <= 0)throw Error("Execute instalarLavaFastCT primeiro.");
+    const limite = Date.now() - CT_JANELA_MAXIMA_MS;
+    const ultimaConcluida = Number(CT_PROPS.getProperty("CT_ULTIMA_BUSCA_OK_MS") || 0);
+    const recuo = ultimaConcluida > 0 ? ultimaConcluida - CT_ATRASO_SEGURANCA_MS : inicio;
+    const desde = Math.max(inicio,limite,recuo);
+    const query='from:'+CT_REMETENTE+' subject:"Solicitação de Lavagem" after:'+Math.floor((desde-60000)/1000);
+
+    const mensagens = [];
+    // Examina em paginas para evitar perda quando houver muitos emails.
+    for(let inicioPagina = 0; inicioPagina < 500; inicioPagina += 100) {
+      const threads = GmailApp.search(query,inicioPagina,100);
+      for(const thread of threads) {
+        for(const msg of thread.getMessages()) {
+          if(msg.getDate().getTime() < desde)continue;
+          if(ctEnderecoRemetente_(msg.getFrom()) !== CT_REMETENTE)continue;
+          if(!ctAssuntoCorreto_(msg.getSubject()))continue;
+          if(CT_PROPS.getProperty("CT_SENT_"+msg.getId()))continue;
+          mensagens.push(msg);
+        }
       }
+      if(threads.length < 100)break;
     }
-    messages.sort((a,b)=>a.getDate().getTime()-b.getDate().getTime());
-    let ok=0,erros=0,ignorado=0;
-    for(const m of messages.slice(0,40)){
-      const texto=String(m.getPlainBody()||"");
-      const match=texto.match(/Ag[eê]ncia da Abertura:\s*([A-Z0-9]+)/i);
-      const agencia=String(match?.[1]||"").toUpperCase();
-      // Codigo da agencia no app original: ACSMC=Mooca; ACUCP=Central Plaza.
-      const loja=agencia==="ACSMC"?"MOOCA":agencia==="ACUCP"?"CENTRAL_PLAZA":null;
-      if(!loja){ignorado++;continue;}
-      const payload=JSON.stringify({
+    mensagens.sort((a,b)=>a.getDate().getTime()-b.getDate().getTime());
+
+    let importados=0,duplicados=0,erros=0,ignorados=0;
+    for(const msg of mensagens.slice(0,CT_MAXIMO_POR_EXECUCAO)) {
+      const texto=String(msg.getPlainBody()||"");
+      const loja=ctLoja_(ctAgencia_(texto));
+      if(!loja){ignorados++;continue;} // agencia fora das lojas atendidas
+
+      const payload={
         loja_codigo:loja,
         texto:texto.slice(0,26000),
-        message_id:m.getId(),
-        recebido_em:m.getDate().toISOString()
-      });
-      try{
-        const resp=UrlFetchApp.fetch(url,{
-          method:"post",
-          contentType:"application/json",
-          headers:{"x-lavafast-relay":secret},
-          payload,
+        message_id:msg.getId(),
+        recebido_em:msg.getDate().toISOString(),
+        remetente:msg.getFrom(),
+        assunto:msg.getSubject()
+      };
+      try {
+        const resposta=UrlFetchApp.fetch(config.url,{
+          method:"post",contentType:"application/json; charset=utf-8",
+          headers:{"x-lavafast-relay":config.secret},
+          payload:JSON.stringify(payload),
           muteHttpExceptions:true
         });
-        if(resp.getResponseCode()>=200&&resp.getResponseCode()<300){
-          PROPS.setProperty("CT_SENT_"+m.getId(),String(Date.now()));
-          ok++;
+        const status=resposta.getResponseCode();
+        const data=JSON.parse(resposta.getContentText()||"{}");
+        if(status >= 200 && status < 300 && data.sucesso===true && data.encontrados>0) {
+          CT_PROPS.setProperty("CT_SENT_"+msg.getId(),String(Date.now()));
+          importados += Number(data.criados)||0;
+          duplicados += Number(data.duplicados)||0;
         }else{
-          erros++;Logger.log("Falha de entrega HTTP "+resp.getResponseCode());
+          erros++;
+          Logger.log("Email CT nao aceito. HTTP "+status+". MsgId "+msg.getId());
+          if(status===401||status===403||status===503)break; // configuracao falhou, nao sobrecarregar
         }
-      }catch(err){erros++;Logger.log("Falha de rede ao entregar mensagem.");}
-    }
-    // Limita crescimento das Script Properties: guarda 7 dias de deduplicacao.
-    for(const [key,value] of Object.entries(PROPS.getProperties())){
-      if(key.startsWith("CT_SENT_")&&Date.now()-Number(value)>7*86400000){
-        PROPS.deleteProperty(key);
+      }catch(err){
+        erros++;
+        Logger.log("Email CT falhou para MsgId "+msg.getId()+" (repetira).");
       }
     }
-    Logger.log("Novas mensagens processadas: "+ok+"; falhas: "+erros+"; agencias desconhecidas: "+ignorado);
+    CT_PROPS.setProperty("CT_ULTIMA_VERIFICACAO_MS",String(Date.now()));
+    // So avanca cursor quando nao houver fila pendente nem falhas.
+    if(erros===0 && mensagens.length<=CT_MAXIMO_POR_EXECUCAO) {
+      CT_PROPS.setProperty("CT_ULTIMA_BUSCA_OK_MS",String(Date.now()));
+    }
+
+    // Evita estourar o limite de propriedades do Apps Script.
+    const limitePropriedades=Date.now()-2*86400000;
+    for(const [key,val] of Object.entries(CT_PROPS.getProperties())) {
+      if(key.startsWith("CT_SENT_") && Number(val)<limitePropriedades)
+        CT_PROPS.deleteProperty(key);
+    }
+    Logger.log("LavaFast Gmail: novos cards="+importados+", SLs duplicadas="+duplicados+
+      ", falhas="+erros+", agencias desconhecidas="+ignorados+
+      ", pendentes examinados="+mensagens.length);
   }finally{lock.releaseLock();}
 }
 
-function pararLavaFastCT(){
-  for(const t of ScriptApp.getProjectTriggers()){
-    if(t.getHandlerFunction()==="sincronizarEmailLavaFastCT")ScriptApp.deleteTrigger(t);
+function recuperarUltimas24hLavaFastCT() {
+  ctValidarConfiguracao_();
+  // Acao MANUAL e segura: recupera mensagens recentes respeitando a
+  // restricao de SL unica no D1. Nao reabre lavagens concluidas.
+  CT_PROPS.setProperty("CT_INICIO_MS", String(Date.now()-86400000));
+  CT_PROPS.deleteProperty("CT_ULTIMA_BUSCA_OK_MS");
+  sincronizarEmailLavaFastCT();
+}
+
+function pararLavaFastCT() {
+  for(const trigger of ScriptApp.getProjectTriggers()) {
+    if(trigger.getHandlerFunction()==="sincronizarEmailLavaFastCT")
+      ScriptApp.deleteTrigger(trigger);
   }
-  Logger.log("Gatilhos da contingencia removidos. Dados do D1 foram preservados.");
+  Logger.log("Sincronizacao de e-mails suspensa; cards D1 preservados.");
 }
