@@ -1,3 +1,4 @@
+import { verificarEstruturaContingencia, prepararEstruturaContingencia } from "./contingenciaSchema.js";
 // LavaFast Contingencia: sem dependencias de Supabase, Render ou Vercel.
 // Apenas estrutura D1 isolada; CPF nunca armazenado em texto, financeiro inexistente.
 const PREFIX="/api/contingencia";
@@ -34,14 +35,20 @@ async function secretEq(a,b){
  for(let i=0;i<x.length;i++)delta|=x.charCodeAt(i)^y.charCodeAt(i);
  return delta===0;
 }
-async function passHash(salt,pwd){
- const k=await crypto.subtle.importKey("raw",new TextEncoder().encode(pwd),"PBKDF2",false,["deriveBits"]);
- const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt:new TextEncoder().encode(salt),iterations:120000,hash:"SHA-256"},k,256);
- return encode(bits);
+// Workers Free limita CPU a 10 ms e workerd rejeita PBKDF2 acima de 100 mil.
+// Hash de CONTINGENCIA: HMAC secreto antes de PBKDF2 curto + salt unico.
+// Nao utilizar como estrategia de autenticacao permanente sem upgrade de custos.
+const ITERACOES_CT=14000;
+async function passHash(salt,pwd,pepper){
+ const prehash=await hmac(pepper,"LavaFast-CT/password/"+pwd);
+ const k=await crypto.subtle.importKey("raw",new TextEncoder().encode(prehash),"PBKDF2",false,["deriveBits"]);
+ const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt:new TextEncoder().encode(salt),iterations:ITERACOES_CT,hash:"SHA-256"},k,256);
+ return "v2$"+encode(bits);
 }
-async function passEq(salt,pwd,expected){
- const actual=await passHash(salt,pwd);
- if(typeof expected!=="string"||expected.length!==actual.length)return false;
+async function passEq(salt,pwd,expected,pepper){
+ if(typeof expected!=="string"||!expected.startsWith("v2$"))return false;
+ const actual=await passHash(salt,pwd,pepper);
+ if(expected.length!==actual.length)return false;
  let diff=0;for(let i=0;i<actual.length;i++)diff|=actual.charCodeAt(i)^expected.charCodeAt(i);
  return diff===0;
 }
@@ -71,9 +78,11 @@ async function bootstrap(r,env){
  let b;try{b=await body(r,1800);}catch{return response({erro:"Dados invalidos."},400);}
  const cpf=cpfLimpo(b.cpf),nome=b.nome?.trim();
  if(!cpf||!validName(nome)||!validPassword(b.senha))return response({erro:"CPF valido, nome e senha com 12+ caracteres obrigatorios."},400);
+ // Chave administrativa validada: criar schema se migrations do deploy nao rodaram.
+ await prepararEstruturaContingencia(env);
  const num=await env.DB.prepare("SELECT COUNT(*) AS n FROM ct_funcionarios").first();
  if(num.n!==0)return response({erro:"Administrador inicial ja cadastrado."},409);
- const salt=randomHex(),pwd=await passHash(salt,b.senha),id=crypto.randomUUID(),ts=now(),cpfHmac=await hmac(env.CT_AUTH_PEPPER,cpf);
+ const salt=randomHex(),pwd=await passHash(salt,b.senha,env.CT_AUTH_PEPPER),id=crypto.randomUUID(),ts=now(),cpfHmac=await hmac(env.CT_AUTH_PEPPER,cpf);
  const added=await env.DB.prepare("INSERT INTO ct_funcionarios(id,cpf_hmac,cpf_final,nome,cargo,loja_codigo,ativo,senha_salt,senha_hash,trocar_senha,criado_em,atualizado_em) SELECT ?,?,?,?,?,?,1,?,?,0,?,? WHERE NOT EXISTS(SELECT 1 FROM ct_funcionarios)").bind(id,cpfHmac,cpf.slice(-4),nome,"C&O","TODAS",salt,pwd,ts,ts).run();
  if(added.meta?.changes!==1)return response({erro:"Administrador ja criado."},409);
  await audit(env,"BOOTSTRAP",id);
@@ -92,7 +101,7 @@ async function login(r,env){
  const rate=await env.DB.prepare("SELECT falhas,expira_em FROM ct_tentativas WHERE chave_hmac=?").bind(key).first();
  if(rate&&rate.expira_em>now()&&rate.falhas>=5)return response({erro:"Muitas tentativas. Aguarde 15 minutos."},429);
  const u=await env.DB.prepare("SELECT * FROM ct_funcionarios WHERE cpf_hmac=? AND ativo=1").bind(await hmac(env.CT_AUTH_PEPPER,cpf)).first();
- if(!u||!await passEq(u.senha_salt,b.senha,u.senha_hash)){
+ if(!u||!await passEq(u.senha_salt,b.senha,u.senha_hash,env.CT_AUTH_PEPPER)){
    await failAttempt(env,key);return response({erro:"CPF ou senha incorretos."},401);
  }
  await env.DB.prepare("DELETE FROM ct_tentativas WHERE chave_hmac=?").bind(key).run();
@@ -108,9 +117,9 @@ async function passwordChange(r,env,u){
  if(!sameOrigin(r))return response({erro:"Origem nao autorizada."},403);
  let b;try{b=await body(r,1200);}catch{return response({erro:"Dados invalidos."},400);}
  if(typeof b.senha_atual!=="string"||!validPassword(b.nova_senha))return response({erro:"Informe senha atual e nova senha de 12+ caracteres."},400);
- if(!await passEq(u.senha_salt,b.senha_atual,u.senha_hash))return response({erro:"Senha atual incorreta."},403);
+ if(!await passEq(u.senha_salt,b.senha_atual,u.senha_hash,env.CT_AUTH_PEPPER))return response({erro:"Senha atual incorreta."},403);
  if(b.senha_atual===b.nova_senha)return response({erro:"Escolha uma senha diferente."},400);
- const salt=randomHex(),hash=await passHash(salt,b.nova_senha);
+ const salt=randomHex(),hash=await passHash(salt,b.nova_senha,env.CT_AUTH_PEPPER);
  await env.DB.prepare("UPDATE ct_funcionarios SET senha_salt=?,senha_hash=?,trocar_senha=0,atualizado_em=? WHERE id=?").bind(salt,hash,now(),u.id).run();
  await env.DB.prepare("DELETE FROM ct_sessoes WHERE funcionario_id=?").bind(u.id).run();
  await audit(env,"ALTERAR_SENHA",u.id);
@@ -124,7 +133,7 @@ async function employeeCreate(r,env,u){
  if(!cpf||!validName(nome)||!validCargo(cargo)||!validPassword(pwd)||
  ![...LOJAS,"TODAS"].includes(loja)||(role(cargo)==="OPERACAO"&&loja==="TODAS"))
   return response({erro:"Informe CPF, nome, cargo, loja e senha temporaria de 12+ caracteres."},400);
- const id=crypto.randomUUID(),salt=randomHex(),hash=await passHash(salt,pwd),stamp=now();
+ const id=crypto.randomUUID(),salt=randomHex(),hash=await passHash(salt,pwd,env.CT_AUTH_PEPPER),stamp=now();
  try{
   await env.DB.prepare("INSERT INTO ct_funcionarios(id,cpf_hmac,cpf_final,nome,cargo,loja_codigo,ativo,senha_salt,senha_hash,trocar_senha,criado_em,atualizado_em) VALUES (?,?,?,?,?,?,1,?,?,1,?,?)").bind(id,await hmac(env.CT_AUTH_PEPPER,cpf),cpf.slice(-4),nome,cargo,loja,salt,hash,stamp,stamp).run();
  }catch{return response({erro:"Funcionario ja cadastrado ou dados invalidos."},409);}
@@ -252,7 +261,13 @@ async function exportCards(env,u){
 export async function contingenciaApi(r,env,url){
  const path=url.pathname;
  if(!path.startsWith(PREFIX+"/"))return null;
- if(path===PREFIX+"/config"&&r.method==="GET")return response({ambiente:"homologacao",independente_supabase:true,pronto:enabled(env),email_relay_habilitado:enabled(env)&&typeof env.CT_EMAIL_RELAY_SECRET==="string"&&env.CT_EMAIL_RELAY_SECRET.length>=32});
+ if(path===PREFIX+"/config"&&r.method==="GET"){
+  const pronto=enabled(env);
+  const estrutura_pronta=pronto?await verificarEstruturaContingencia(env):false;
+  return response({ambiente:"homologacao",independente_supabase:true,pronto,
+    estrutura_pronta,instalacao_automatica_com_chave:true,
+    email_relay_habilitado:pronto&&typeof env.CT_EMAIL_RELAY_SECRET==="string"&&env.CT_EMAIL_RELAY_SECRET.length>=32});
+ }
  if(!enabled(env))return response({erro:"Ativacao de contingencia pendente no Cloudflare."},503);
  try{
   if(path===PREFIX+"/bootstrap"&&r.method==="POST")return bootstrap(r,env);
