@@ -185,6 +185,32 @@ test("cartoes por email colado, insercao manual, deduplicacao e finalizacao atom
  }finally{db.close();}
 });
 
+test("relay autenticado recebe email com horario original sem valores financeiros",async()=>{
+ const db=dbLocal();
+ try{
+  const e=env(db);
+  e.CT_EMAIL_RELAY_SECRET="segredo-do-relay-de-email-de-homologacao-totalmente-separado";
+  const recebidoEm=new Date(Date.now()-15*60000).toISOString();
+  const r=await call("/api/contingencia/email/relay",e,"POST",{
+    loja_codigo:"MOOCA",texto:"Agência da Abertura: ACSMC\n12345698\nABC1D23\nR$ 999,00",
+    message_id:"email-de-teste-01",recebido_em:recebidoEm
+  },"",{"x-lavafast-relay":e.CT_EMAIL_RELAY_SECRET});
+  assert.equal(r.status,200);
+  assert.equal(r.result.criados,1);
+  const row=db.prepare("SELECT * FROM ct_solicitacoes WHERE numero_solicitacao='12345698'").get();
+  assert.equal(row.recebida_em,recebidoEm);
+  assert.equal(row.origem,"IMPORTACAO_EMAIL");
+  assert.equal(row.loja_codigo,"MOOCA");
+  assert.ok(!JSON.stringify(row).includes("999,00"));
+  assert.ok(!Object.hasOwn(row,"valor_centavos"));
+  const retry=await call("/api/contingencia/email/relay",e,"POST",{
+    loja_codigo:"MOOCA",texto:"12345698\nABC1D23",message_id:"email-de-teste-01"
+  },"",{"x-lavafast-relay":e.CT_EMAIL_RELAY_SECRET});
+  assert.equal(retry.status,200);
+  assert.equal(retry.result.duplicados,1);
+ }finally{db.close();}
+});
+
 test("relay de email bloqueado ate secreto proprio; visual separado e validado",async()=>{
  const db=dbLocal();
  try{
