@@ -6,6 +6,8 @@ const PREFIX="/api/contingencia";
 const COOKIE="__Host-lfct";
 const EXPIRA=60*60*8;
 const LOJAS=["MOOCA","CENTRAL_PLAZA"];
+const routingTo=env=>String(env.CT_EMAIL_INBOUND_TO||"").trim().toLowerCase();
+const isEmailConfigured=env=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(routingTo(env));
 const response=(obj,status=200,headers={})=>new Response(JSON.stringify(obj),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store","x-content-type-options":"nosniff",...headers}});
 const now=()=>new Date().toISOString();
 const enabled=env=>env.ENVIRONMENT==="homologacao"&&!!env.DB&&typeof env.CT_BOOTSTRAP_SECRET==="string"&&env.CT_BOOTSTRAP_SECRET.length>=32&&typeof env.CT_AUTH_PEPPER==="string"&&env.CT_AUTH_PEPPER.length>=32;
@@ -350,7 +352,7 @@ async function statusGmail(env,u){
    FROM ct_email_importacoes ORDER BY processado_em DESC LIMIT 12`).all();
  return response({
    relay_configurado:typeof env.CT_EMAIL_RELAY_SECRET==="string"&&env.CT_EMAIL_RELAY_SECRET.length>=32,
-   email_routing_configurado:typeof env.CT_EMAIL_INBOUND_TO==="string"&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(env.CT_EMAIL_INBOUND_TO),
+   email_routing_configurado:isEmailConfigured(env),
    periodo:"ultimas_24_horas",
    resumo:{mensagens:totals?.mensagens||0,cards_criados:totals?.cards_criados||0,duplicados:totals?.duplicados||0},
    ultimas:(last.results||[]).map(row=>row)
@@ -389,7 +391,7 @@ export async function contingenciaApi(r,env,url){
   return response({ambiente:"homologacao",independente_supabase:true,pronto,
     estrutura_pronta,instalacao_automatica_com_chave:true,
     email_relay_habilitado:pronto&&typeof env.CT_EMAIL_RELAY_SECRET==="string"&&env.CT_EMAIL_RELAY_SECRET.length>=32,
-    email_routing_configurado:pronto&&typeof env.CT_EMAIL_INBOUND_TO==="string"&&env.CT_EMAIL_INBOUND_TO.includes("@")});
+    email_routing_configurado:pronto&&isEmailConfigured(env)});
  }
  if(!enabled(env))return response({erro:"Ativacao de contingencia pendente no Cloudflare."},503);
  try{
