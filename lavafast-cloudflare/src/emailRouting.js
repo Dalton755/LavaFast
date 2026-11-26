@@ -110,7 +110,7 @@ export async function processarEmailRouting(message,env){
                 /(gmail forwarding confirmation)/i.test(subject)&&source.includes("@google.com");
  if(isVerify){
   const dest=norm(env.CT_EMAIL_VERIFY_FORWARD_TO);
-  if(dest&&dest.includes("@")&&message.canBeForwarded){
+  if(dest&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dest)&&typeof message.forward==="function"){
     await message.forward(dest);
   }
   return;
