@@ -67,6 +67,10 @@ test("recebe Localiza sem Apps Script, salva cards operacionais no D1 sem valore
   const stat=db.prepare("SELECT criados,duplicados FROM ct_email_importacoes").get();
   assert.equal(stat.criados,2);
   assert.equal(stat.duplicados,2);
+  const events=db.prepare("SELECT evento,quantidade FROM ct_email_diagnostico ORDER BY evento").all();
+  assert.ok(events.some(x=>x.evento==="EMAIL_RECEBIDO_WORKER"&&x.quantidade===2));
+  assert.ok(events.some(x=>x.evento==="CARDS_CRIADOS"&&x.quantidade===1));
+  assert.ok(events.some(x=>x.evento==="SL_DUPLICADA"&&x.quantidade===1));
  }finally{db.close();}
 });
 test("nao importa emails que nao sao da Localiza ou para outro endereco",async()=>{
@@ -76,6 +80,10 @@ test("nao importa emails que nao sao da Localiza ou para outro endereco",async()
   await worker.email(email({to:"outro@inbox.exemplo.com"}),bindings,{});
   await worker.email(email({subject:"Cancelamento de Lavagem"}),bindings,{});
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM ct_solicitacoes").get().n,0);
+  const events=db.prepare("SELECT evento,quantidade FROM ct_email_diagnostico ORDER BY evento").all();
+  assert.ok(events.some(x=>x.evento==="EMAIL_RECEBIDO_WORKER"&&x.quantidade===3));
+  assert.ok(events.some(x=>x.evento==="REMETENTE_OU_ASSUNTO_DIFERENTE"&&x.quantidade===2));
+  assert.ok(events.some(x=>x.evento==="DESTINATARIO_DIFERENTE"&&x.quantidade===1));
  }finally{db.close();}
 });
 test("email realista HTML/base64 com assunto MIME cria card (regressao 26/11)",async()=>{
