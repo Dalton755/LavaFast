@@ -11,10 +11,39 @@ export function normalizarRemetente(from) {
   return (matches ? matches[1] : from).trim().toLowerCase();
 }
 
+// Assuntos recebidos de SMTP podem chegar em RFC 2047 (=?utf-8?B?...?=).
+// Esse e exatamente o formato dos e-mails reais de solicitacao Localiza.
+// Decodificar APENAS o campo de assunto, sem alterar as regras de privacidade.
+export function decodificarAssuntoMime(value) {
+ if (typeof value !== "string" || value.length > 512) return "";
+ const unfolded=value.replace(/\r?\n[ \t]+/g," ");
+ return unfolded.replace(/=\?([a-z0-9_-]{2,32})\?([bq])\?([^?]{1,512})\?=/gi,
+  (whole,charset,kind,content)=>{
+   try {
+    let bytes;
+    if(kind.toLowerCase()==="b"){
+      if(!/^[A-Za-z0-9+/]*={0,2}$/.test(content))return whole;
+      const latin=atob(content);
+      bytes=Uint8Array.from(latin,ch=>ch.charCodeAt(0));
+    }else{
+      const arr=[];
+      const q=content.replace(/_/g," ");
+      for(let i=0;i<q.length;i++){
+       if(q[i]==="="&&/^[0-9a-f]{2}$/i.test(q.slice(i+1,i+3))){
+        arr.push(parseInt(q.slice(i+1,i+3),16));i+=2;
+       }else arr.push(q.charCodeAt(i));
+      }
+      bytes=new Uint8Array(arr);
+    }
+    return new TextDecoder(charset).decode(bytes);
+   } catch {return whole;}
+  }).replace(/(\S)\s+(?=\S)/g,"$1 ");
+}
+
 export function verificarMensagemLocaliza(remetente, assunto) {
   if(normalizarRemetente(remetente)!=="no-reply@localiza.com")return false;
   if(typeof assunto!=="string"||assunto.length>200)return false;
-  const subject=assunto.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
+  const subject=decodificarAssuntoMime(assunto).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
   return subject==="solicitacao de lavagem";
 }
 
