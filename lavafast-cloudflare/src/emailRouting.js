@@ -97,12 +97,10 @@ function extractMime(raw){
  return parsed?.text?.trim().slice(0,26000)||"";
 }
 export async function processarEmailRouting(message,env){
- if(env.ENVIRONMENT!=="homologacao"||!env.DB)return;
+ if(env.ENVIRONMENT!=="homologacao"||!env.DB)return "EMAIL_SEM_CONFIGURACAO";
  const configured=norm(env.CT_EMAIL_INBOUND_TO);
- if(!configured||!configured.includes("@")||norm(message.to)!==configured){
-   // Sem destinatario definido, a rota nao pode receber solicitacoes.
-   return;
- }
+ if(!configured||!configured.includes("@"))return "EMAIL_SEM_CONFIGURACAO";
+ if(norm(message.to)!==configured)return "DESTINATARIO_DIFERENTE";
  const mimeFrom=message.headers.get("from")||"";
  const subject=message.headers.get("subject")||"";
  const source=norm(mimeFrom);
@@ -113,9 +111,9 @@ export async function processarEmailRouting(message,env){
   if(dest&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dest)&&typeof message.forward==="function"){
     await message.forward(dest);
   }
-  return;
+  return "VERIFICACAO_GOOGLE";
  }
- if(!verificarMensagemLocaliza(mimeFrom,subject))return;
+ if(!verificarMensagemLocaliza(mimeFrom,subject))return "REMETENTE_OU_ASSUNTO_DIFERENTE";
  if(message.rawSize>maxBytes)throw Error("Email excede limite de tamanho para importacao");
  const raw=await new Response(message.raw).text();
  if(raw.length>maxBytes*2)throw Error("Email muito grande");
@@ -140,4 +138,5 @@ export async function processarEmailRouting(message,env){
  if(!result.sucesso)throw Error("Importacao negada: "+String(result.erro||"falha").slice(0,100));
  // Nao registrar numero SL, placa, email, corpo ou valores nos logs.
  console.log("LavaFast Email Routing: processado, novos="+result.criados+", duplicados="+result.duplicados);
+ return result.criados>0?"CARDS_CRIADOS":"SL_DUPLICADA";
 }
