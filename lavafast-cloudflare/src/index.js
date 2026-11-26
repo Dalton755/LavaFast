@@ -6,6 +6,7 @@ import { contingenciaApi } from "./contingenciaApi.js";
 import { paginaContingenciaHtml, scriptContingenciaJs } from "./contingenciaPage.js";
 import { paginaCadastroRapidoHtml, scriptCadastroRapidoJs } from "./cadastroRapidoPage.js";
 import { processarEmailRouting } from "./emailRouting.js";
+import { registrarEventoEmail } from "./emailDiagnostico.js";
 
 // Piloto isolado. Nunca faz consultas ao Supabase nem recebe eventos de producao.
 const responder = (conteudo, status = 200) => new Response(JSON.stringify(conteudo), {
@@ -209,7 +210,14 @@ export default {
     return responder({ erro: "Rota nao encontrada." }, 404);
   },
   async email(message, env) {
-    // Cloudflare Email Routing chama este handler; nao precisa de Apps Script.
-    await processarEmailRouting(message, env);
+    // Contadores por categoria sem assunto, remetente, CPF, placa ou valores.
+    await registrarEventoEmail(env,"EMAIL_RECEBIDO_WORKER");
+    try {
+      const etapa=await processarEmailRouting(message, env);
+      if(etapa)await registrarEventoEmail(env,etapa);
+    } catch (erro) {
+      await registrarEventoEmail(env,"ERRO_PROCESSAMENTO");
+      throw erro; // Erros transitorios devem ser visiveis no Cloudflare.
+    }
   }
 };
