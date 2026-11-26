@@ -1,5 +1,6 @@
 import { verificarEstruturaContingencia, prepararEstruturaContingencia } from "./contingenciaSchema.js";
 import { extrairSolicitacoesLocaliza, verificarMensagemLocaliza } from "./localizaEmail.js";
+import { resumoDiagnosticoEmail } from "./emailDiagnostico.js";
 // LavaFast Contingencia: sem dependencias de Supabase, Render ou Vercel.
 // Apenas estrutura D1 isolada; CPF nunca armazenado em texto, financeiro inexistente.
 const PREFIX="/api/contingencia";
@@ -355,6 +356,7 @@ async function statusGmail(env,u){
    email_routing_configurado:isEmailConfigured(env),
    periodo:"ultimas_24_horas",
    resumo:{mensagens:totals?.mensagens||0,cards_criados:totals?.cards_criados||0,duplicados:totals?.duplicados||0},
+   diagnostico:await resumoDiagnosticoEmail(env),
    ultimas:(last.results||[]).map(row=>row)
  });
 }
