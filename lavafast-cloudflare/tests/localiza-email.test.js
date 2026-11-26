@@ -58,6 +58,15 @@ test("agencia desconhecida nao e associada por adivinhacao",()=>{
  assert.equal(out.agencia,"OUTRA");
 });
 
+test("aceita assunto MIME RFC2047 base64/quoted-printable encontrado nos emails reais",()=>{
+ const sender="<no-reply@localiza.com>";
+ const encodedB="=?utf-8?B?U29saWNpdGHDp8OjbyBkZSBMYXZhZ2Vt?=";
+ const encodedQ="=?UTF-8?Q?Solicita=C3=A7=C3=A3o_de_Lavagem?=";
+ assert.equal(verificarMensagemLocaliza(sender,encodedB),true);
+ assert.equal(verificarMensagemLocaliza(sender,encodedQ),true);
+ assert.equal(verificarMensagemLocaliza("invasor@example.com",encodedB),false);
+ assert.equal(verificarMensagemLocaliza(sender,"=?utf-8?B?Q2FuY2VsYW1lbnRv?="),false);
+});
 test("remetente e assunto Localiza tem que ser exatos",()=>{
  assert.equal(normalizarRemetente("Localiza <no-reply@localiza.com>"),"no-reply@localiza.com");
  assert.equal(verificarMensagemLocaliza("Localiza <no-reply@localiza.com>","Solicitação de Lavagem"),true);
