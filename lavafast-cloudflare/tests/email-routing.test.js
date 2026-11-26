@@ -78,6 +78,26 @@ test("nao importa emails que nao sao da Localiza ou para outro endereco",async()
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM ct_solicitacoes").get().n,0);
  }finally{db.close();}
 });
+test("email realista HTML/base64 com assunto MIME cria card (regressao 26/11)",async()=>{
+ const {db,env:bindings}=env();
+ try{
+  const encodedSubject="=?utf-8?B?U29saWNpdGHDp8OjbyBkZSBMYXZhZ2Vt?=";
+  const html="<html><body><p>Prezado,</p><p>Agencia da Abertura: ACSMC</p>"+
+    "<table><tr><td>87654399</td><td>XYZ1A23</td><td>R$ 123,45</td></tr></table>"+
+    "</body></html>";
+  await worker.email(email({subject:encodedSubject,
+     contentType:"text/html; charset=utf-8",
+     encoding:"base64",content:Buffer.from(html).toString("base64"),
+     messageId:"<teste-base64-MIME@localiza.com>"
+  }),bindings,{});
+  const cards=db.prepare("SELECT * FROM ct_solicitacoes").all();
+  assert.equal(cards.length,1);
+  assert.equal(cards[0].numero_solicitacao,"87654399");
+  assert.equal(cards[0].placa,"XYZ1A23");
+  assert.equal(cards[0].loja_codigo,"MOOCA");
+  assert.ok(!JSON.stringify(cards).includes("123,45"));
+ }finally{db.close();}
+});
 test("multipart base64 com agencia Central Plaza cria cards no destino certo",async()=>{
  const {db,env:bindings}=env();
  try{
