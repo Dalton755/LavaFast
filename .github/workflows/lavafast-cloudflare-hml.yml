@@ -27,4 +27,15 @@ jobs:
       - name: Instalar sem atualizar lockfile
         run: npm ci
       - name: Executar testes offline
-        run: npm test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee ../lavafast-hml-test-report.txt
+      - name: Salvar diagnostico dos testes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lavafast-hml-test-report
+          path: lavafast-hml-test-report.txt
+          if-no-files-found: warn
+          retention-days: 7
