@@ -8,6 +8,7 @@
     "dev": "npx wrangler dev",
     "deploy": "npm run test:smoke && npm run db:migrate && npx wrangler deploy",
     "db:migrate": "npx wrangler d1 migrations apply DB --remote",
-    "test:smoke": "node --test tests/localiza-email.test.js tests/email-routing.test.js tests/gmail-api.test.js"
+    "test:smoke": "node --test tests/localiza-email.test.js tests/email-routing.test.js",
+    "test:gmail-api": "node --test tests/gmail-api.test.js"
   }
 }
