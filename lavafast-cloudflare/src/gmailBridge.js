@@ -68,6 +68,40 @@ async function ensureState(env){
 async function ensureConn(env){
  await env.DB.prepare("CREATE TABLE IF NOT EXISTS ct_gmail_integracao (id TEXT PRIMARY KEY NOT NULL CHECK(id='localiza'),gmail TEXT NOT NULL,refresh_token_encrypted TEXT NOT NULL,conectada_em TEXT NOT NULL,ultima_consulta TEXT,ultimo_sucesso TEXT,ultimo_erro_codigo TEXT,lock_owner TEXT,lock_until TEXT,mensagens_analisadas INTEGER NOT NULL DEFAULT 0,cards_criados INTEGER NOT NULL DEFAULT 0,atualizado_em TEXT NOT NULL)").run();
 }
+// Classifica somente erros conhecidos, nunca retorna SQL bruto ou valores.
+function d1Code(e){
+ const msg=String(e?.message||"")+" "+String(e?.cause?.message||"");
+ if(/no such table/i.test(msg))return "D1_TABELA_AUSENTE";
+ if(/no such column|has no column named/i.test(msg))return "D1_COLUNA_AUSENTE";
+ if(/NOT NULL constraint/i.test(msg))return "D1_CAMPO_OBRIGATORIO";
+ if(/CHECK constraint/i.test(msg))return "D1_RESTRICAO_CHECK";
+ if(/UNIQUE constraint|ON CONFLICT clause/i.test(msg))return "D1_RESTRICAO_UNICA";
+ if(/FOREIGN KEY constraint/i.test(msg))return "D1_CHAVE_ESTRANGEIRA";
+ if(/bind|parameter|wrong number/i.test(msg))return "D1_PARAMETROS";
+ if(/quota|limit exceeded|storage full|SQLITE_FULL/i.test(msg))return "D1_LIMITE";
+ if(/read.only|not authorized|permission/i.test(msg))return "D1_PERMISSAO";
+ if(/syntax error/i.test(msg))return "D1_SQL_INVALIDO";
+ return "D1_GRAVACAO_FALHOU";
+}
+async function diagnoseD1(env){
+ try{
+  await ensureConn(env);
+  const schema=await env.DB.prepare("PRAGMA table_info(ct_gmail_integracao)").all();
+  const columns=new Set(schema.results.map(r=>r.name));
+  const missing=["id","gmail","refresh_token_encrypted","conectada_em","ultima_consulta","ultimo_sucesso","ultimo_erro_codigo","lock_owner","lock_until","mensagens_analisadas","cards_criados","atualizado_em"].filter(c=>!columns.has(c));
+  if(missing.length)return {sucesso:false,codigo:"D1_COLUNA_AUSENTE",colunas:missing};
+  const marker=await seal("teste-d1-"+tokenRandom(),env),now=new Date().toISOString();
+  // Transacao atomica: nao substitui conexao existente e remove apenas a propria sonda.
+  const result=await env.DB.batch([
+   env.DB.prepare("INSERT INTO ct_gmail_integracao(id,gmail,refresh_token_encrypted,conectada_em,atualizado_em) VALUES('localiza',?,?,?,?) ON CONFLICT(id) DO NOTHING").bind(norm(env.CT_GMAIL_ALLOWED_EMAIL),marker,now,now),
+   env.DB.prepare("DELETE FROM ct_gmail_integracao WHERE id='localiza' AND refresh_token_encrypted=?").bind(marker)
+  ]);
+  if(result.some(r=>r.success===false))return {sucesso:false,codigo:"D1_GRAVACAO_FALHOU"};
+  if(result[0].meta?.changes!==1)return {sucesso:true,codigo:"D1_CONEXAO_JA_EXISTE"};
+  if(result[1].meta?.changes!==1)return {sucesso:false,codigo:"D1_SONDA_NAO_CONFIRMADA"};
+  return {sucesso:true,codigo:"D1_GRAVACAO_OK"};
+ }catch(e){return {sucesso:false,codigo:d1Code(e)};}
+}
 async function row(env){await ensureConn(env);return env.DB.prepare("SELECT * FROM ct_gmail_integracao WHERE id='localiza'").first();}
 const getErrorStatus=n=>n===429?"GMAIL_LIMITE":n===403?"GMAIL_ACESSO_NEGADO":
  n===401?"TOKEN_INVALIDO":n>=500?"GMAIL_TEMPORARIO":"GMAIL_HTTP_"+n;
@@ -184,7 +218,7 @@ async function oauthCallback(url,env){
  }catch(e){
   // Somente codigos fixos, nunca mensagens brutas, tokens ou dados pessoais.
   const allowed=new Set(["GOOGLE_CLIENTE_INVALIDO","GOOGLE_AUTORIZACAO_INVALIDA","GOOGLE_CLIENTE_NAO_AUTORIZADO","GOOGLE_ACESSO_NEGADO","GOOGLE_SEM_TOKEN","GOOGLE_SEM_REFRESH_TOKEN","ESCOPO_INSUFICIENTE","CONTA_NAO_PERMITIDA","GMAIL_API_DESATIVADA","GMAIL_ACESSO_NEGADO","GMAIL_LIMITE","GMAIL_TEMPORARIO","TOKEN_INVALIDO"]);
-  const codigo=allowed.has(e?.message)?e.message:etapa;
+  const codigo=allowed.has(e?.message)?e.message:etapa==="OAUTH_D1"?d1Code(e):etapa;
   console.warn("Gmail OAuth:",codigo);
   return redirect(codigo);
  }
@@ -275,6 +309,7 @@ export async function gmailContingenciaApi(request,env,url){
  if(!["POST"].includes(request.method))return json({erro:"Metodo invalido."},405);
  if(request.headers.get("Origin")!==new URL(request.url).origin)return json({erro:"Origem nao autorizada."},403);
  if(url.pathname===PREFIX+"/authorize")return oauthStart(env,u);
+ if(url.pathname===PREFIX+"/diagnose"){if(!configured(env))return json({sucesso:false,codigo:"CONFIGURACAO_PENDENTE"},503);return json(await diagnoseD1(env));}
  if(url.pathname===PREFIX+"/sync"){
   const r=await sincronizarGmailContingencia(env);
   return json(r,r.sucesso?200:503);
