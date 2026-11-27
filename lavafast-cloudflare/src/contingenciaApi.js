@@ -1,5 +1,5 @@
 import { verificarEstruturaContingencia, prepararEstruturaContingencia } from "./contingenciaSchema.js";
-import { extrairSolicitacoesLocaliza, verificarMensagemLocaliza } from "./localizaEmail.js";
+import { extrairSolicitacoesLocaliza, verificarMensagemLocaliza, regrasLavagem } from "./localizaEmail.js";
 import { resumoDiagnosticoEmail } from "./emailDiagnostico.js";
 // LavaFast Contingencia: sem dependencias de Supabase, Render ou Vercel.
 // Apenas estrutura D1 isolada; CPF nunca armazenado em texto, financeiro inexistente.
@@ -283,7 +283,7 @@ async function importEmail(r,env,u,relay=false,inboundWorker=false){
  const texto=typeof b?.texto==="string"?b.texto:"";
  if(!texto.trim()||texto.length>26000)
    return response({erro:"Conteudo da solicitacao vazio ou muito grande."},400);
- const extraido=extrairSolicitacoesLocaliza(texto);
+ const extraido=extrairSolicitacoesLocaliza(texto,regrasLavagem(env));
  let loja=b?.loja_codigo;
  if(relay||inboundWorker){
    // Remetente, assunto e agencia sao conferidos antes de gravar qualquer SL.
@@ -310,7 +310,7 @@ async function importEmail(r,env,u,relay=false,inboundWorker=false){
  let criados=0,duplicados=0;
  if(relay||inboundWorker)await garantirAuditoriaGmail(env);
  for(const v of vehicles){
-  const inserted=await saveCard(env,{...v,loja,tipo:"Nao informado",obs:""},
+  const inserted=await saveCard(env,{...v,loja,tipo:v.tipo||"Nao informado",obs:""},
     "IMPORTACAO_EMAIL",u,msgId,relay||inboundWorker?b.recebido_em:null);
   if(inserted)criados++;else duplicados++;
  }
