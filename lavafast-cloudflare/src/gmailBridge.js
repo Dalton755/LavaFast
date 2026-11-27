@@ -1,7 +1,7 @@
 // Gmail API -> Cloudflare D1. OAuth da propria conta de operacao.
 // Nao ha Apps Script, credenciais em codigo, dependencias npm ou Supabase.
 // Escopo somente leitura. Token de renovacao criptografado AES-GCM no D1.
-import { verificarMensagemLocaliza } from "./localizaEmail.js";
+import { verificarMensagemLocaliza, extrairSolicitacoesLocaliza, regrasLavagem } from "./localizaEmail.js";
 import { htmlText } from "./emailRouting.js";
 import { receberEmailDoCloudflare, verificarGestorContingencia } from "./contingenciaApi.js";
 
@@ -313,6 +313,48 @@ export async function sincronizarGmailContingencia(env){
   await env.DB.prepare("UPDATE ct_gmail_integracao SET lock_owner=NULL,lock_until=NULL WHERE id='localiza' AND lock_owner=?").bind(owner).run();
  }
 }
+// Corrige apenas o tipo vazio de cards Gmail existentes; nao recria SLs,
+// nao altera status/loja/placa, nao salva nem devolve valores financeiros.
+async function recuperarTipos(env,cursor){
+ if(!configured(env))return {sucesso:false,erro:"CONFIGURACAO_PENDENTE"};
+ const regras=regrasLavagem(env);
+ if(!regras.length)return {sucesso:false,erro:"TABELA_TIPOS_PENDENTE"};
+ const existing=await row(env);
+ if(!existing)return {sucesso:false,erro:"GOOGLE_NAO_CONECTADO"};
+ const owner=tokenRandom(),now=new Date().toISOString(),lease=new Date(Date.now()+120000).toISOString();
+ const lock=await env.DB.prepare("UPDATE ct_gmail_integracao SET lock_owner=?,lock_until=? WHERE id='localiza' AND (lock_until IS NULL OR lock_until<?)").bind(owner,lease,now).run();
+ if(lock.meta?.changes!==1)return {sucesso:false,erro:"SINCRONIZACAO_EM_ANDAMENTO"};
+ try{
+  const pending=await env.DB.prepare("SELECT DISTINCT mensagem_id FROM ct_solicitacoes WHERE origem='IMPORTACAO_EMAIL' AND tipo_lavagem IN ('Nao informado','Não informado','') AND mensagem_id LIKE 'gapi-%' AND mensagem_id>? ORDER BY mensagem_id LIMIT 9").bind(cursor).all();
+  const ids=pending.results.map(r=>r.mensagem_id), batch=ids.slice(0,8);
+  if(!batch.length)return {sucesso:true,atualizados:0,sem_tipo:0,erros:0,proximo:null};
+  const token=await googleToken(env,{grant_type:"refresh_token",refresh_token:await unseal(existing.refresh_token_encrypted,env)});
+  let atualizados=0,sem_tipo=0,erros=0;
+  for(const id of batch){
+   if(!/^gapi-[a-zA-Z0-9_-]{8,150}$/.test(id)){erros++;continue;}
+   try{
+    const msg=await gmailRequest("messages/"+encodeURIComponent(id.slice(5))+"?format=full",token.access_token);
+    const {from,subject}=extractHeaders(msg);
+    if(!verificarMensagemLocaliza(from,subject)){erros++;continue;}
+    const parsed=extrairSolicitacoesLocaliza(gmailText(msg),regras);
+    if(!parsed.loja_codigo){erros++;continue;}
+    const cards=await env.DB.prepare("SELECT id,numero_solicitacao,placa,loja_codigo FROM ct_solicitacoes WHERE mensagem_id=? AND origem='IMPORTACAO_EMAIL' AND tipo_lavagem IN ('Nao informado','Não informado','')").bind(id).all();
+    const jobs=[];
+    for(const c of cards.results){
+     const v=parsed.veiculos.find(v=>v.numero===c.numero_solicitacao&&v.placa===c.placa&&parsed.loja_codigo===c.loja_codigo);
+     if(!v?.tipo){sem_tipo++;continue;}
+     jobs.push(env.DB.prepare("UPDATE ct_solicitacoes SET tipo_lavagem=?,atualizado_em=? WHERE id=? AND mensagem_id=? AND tipo_lavagem IN ('Nao informado','Não informado','')").bind(v.tipo,new Date().toISOString(),c.id,id));
+    }
+    if(jobs.length){const saved=await env.DB.batch(jobs);atualizados+=saved.reduce((n,r)=>n+Number(r.meta?.changes||0),0);}
+   }catch(e){
+    if(["GMAIL_LIMITE","TOKEN_INVALIDO","GMAIL_ACESSO_NEGADO","GMAIL_API_DESATIVADA"].includes(e?.message))throw e;
+    erros++;
+   }
+  }
+  return {sucesso:true,atualizados,sem_tipo,erros,proximo:ids.length>8?batch.at(-1):null};
+ }catch(e){return {sucesso:false,erro:["GMAIL_LIMITE","TOKEN_INVALIDO","GMAIL_ACESSO_NEGADO","GMAIL_API_DESATIVADA"].includes(e?.message)?e.message:"RECUPERACAO_TIPOS_FALHOU"};}
+ finally{await env.DB.prepare("UPDATE ct_gmail_integracao SET lock_owner=NULL,lock_until=NULL WHERE id='localiza' AND lock_owner=?").bind(owner).run();}
+}
 export async function gmailContingenciaApi(request,env,url){
  if(!url.pathname.startsWith(PREFIX+"/"))return null;
  if(env.ENVIRONMENT!=="homologacao")return json({erro:"Indisponivel."},404);
@@ -321,13 +363,19 @@ export async function gmailContingenciaApi(request,env,url){
  if(!u)return json({erro:"Acesso exclusivo de Admin ou C&O autenticado."},403);
  if(url.pathname===PREFIX+"/status"&&request.method==="GET"){
   const r=await row(env);
-  return json({...statusRow(r),configurado:configured(env),configuracao_pendencias:configurationIssues(env),conta_permitida:env.CT_GMAIL_ALLOWED_EMAIL||null,
+  return json({...statusRow(r),configurado:configured(env),configuracao_pendencias:configurationIssues(env),tipos_configurados:regrasLavagem(env).length>0,conta_permitida:env.CT_GMAIL_ALLOWED_EMAIL||null,
    agendamento:"a cada 5 minutos",redirecionamento_google:REDIRECT});
  }
  if(!["POST"].includes(request.method))return json({erro:"Metodo invalido."},405);
  if(request.headers.get("Origin")!==new URL(request.url).origin)return json({erro:"Origem nao autorizada."},403);
  if(url.pathname===PREFIX+"/authorize")return oauthStart(env,u);
  if(url.pathname===PREFIX+"/diagnose"){if(!configured(env))return json({sucesso:false,codigo:"CONFIGURACAO_PENDENTE"},503);return json(await diagnoseD1(env));}
+ if(url.pathname===PREFIX+"/recuperar-tipos"){
+  let b;try{b=await request.json();}catch{return json({erro:"Dados invalidos."},400);}
+  const cursor=b?.cursor||"";
+  if(typeof cursor!=="string"||(cursor&&!/^gapi-[a-zA-Z0-9_-]{8,150}$/.test(cursor)))return json({erro:"Cursor invalido."},400);
+  const r=await recuperarTipos(env,cursor);return json(r,r.sucesso?200:503);
+ }
  if(url.pathname===PREFIX+"/sync"){
   const r=await sincronizarGmailContingencia(env);
   return json(r,r.sucesso?200:503);
