@@ -47,7 +47,28 @@ export function verificarMensagemLocaliza(remetente, assunto) {
   return subject==="solicitacao de lavagem";
 }
 
-export function extrairSolicitacoesLocaliza(raw) {
+// Tabela privada de classificacao; os valores nunca integram o resultado do parser.
+export function regrasLavagem(env){
+ try{
+  const rows=JSON.parse(env.CT_LAVAGEM_TIPOS_JSON||"[]");
+  if(!Array.isArray(rows)||rows.length>100)return [];
+  const valid=rows.every(r=>typeof r.nome==="string"&&r.nome.trim()&&r.nome.length<=100&&Number.isSafeInteger(r.min)&&Number.isSafeInteger(r.max)&&r.min>=0&&r.max>=r.min);
+  if(!valid)return [];
+  const sorted=[...rows].sort((a,b)=>a.min-b.min);
+  return sorted.some((r,i)=>i>0&&r.min<=sorted[i-1].max)?[]:sorted;
+ }catch{return [];}
+}
+function identificarTipo(linhas,i,regras){
+ for(let j=i;j<Math.min(i+6,linhas.length);j++){
+  if(j>i&&(/^\d{7,12}(?:\s|$)/.test(linhas[j])))break;
+  const m=linhas[j].match(/R\$\s*((?:\d{1,3}(?:\.\d{3})+|\d+),\d{2})(?!\d)/i);
+  if(!m)continue;
+  const centavos=Number(m[1].replace(/[.,]/g,""));
+  return regras.find(r=>centavos>=r.min&&centavos<=r.max)?.nome?.trim()||null;
+ }
+ return null;
+}
+export function extrairSolicitacoesLocaliza(raw,regras=[]) {
   const texto=String(raw||"").replace(/\u00a0/g," ").replace(/\*/g,"").replace(/\r/g,"");
   const agencia=texto.match(/Ag[eê]ncia da Abertura\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase()||"";
   const loja_codigo=mapAgencias[agencia]||null;
@@ -65,7 +86,8 @@ export function extrairSolicitacoesLocaliza(raw) {
     vistos.add(sl);
     // Apenas identificadores operacionais. Nunca trazer R$, valores ou dados
     // sensiveis do texto do e-mail para o banco ou resposta dos cards.
-    veiculos.push({numero:sl,placa:placa.toUpperCase()});
+    const tipo=identificarTipo(linhas,i,regras);
+    veiculos.push({numero:sl,placa:placa.toUpperCase(),...(tipo?{tipo}:{})});
     if(veiculos.length>=100)break;
   }
   return {agencia,loja_codigo,veiculos};
