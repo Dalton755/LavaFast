@@ -67,6 +67,24 @@ async function ensureState(env){
 }
 async function ensureConn(env){
  await env.DB.prepare("CREATE TABLE IF NOT EXISTS ct_gmail_integracao (id TEXT PRIMARY KEY NOT NULL CHECK(id='localiza'),gmail TEXT NOT NULL,refresh_token_encrypted TEXT NOT NULL,conectada_em TEXT NOT NULL,ultima_consulta TEXT,ultimo_sucesso TEXT,ultimo_erro_codigo TEXT,lock_owner TEXT,lock_until TEXT,mensagens_analisadas INTEGER NOT NULL DEFAULT 0,cards_criados INTEGER NOT NULL DEFAULT 0,atualizado_em TEXT NOT NULL)").run();
+ // Bancos provisionados antes da inclusao do lock possuem tabela antiga.
+ // CREATE IF NOT EXISTS nao atualiza tabelas existentes. Migra somente
+ // as duas colunas opcionais, sem apagar registros nem tokens.
+ const columns=async()=>new Set((await env.DB.prepare("PRAGMA table_info(ct_gmail_integracao)").all()).results.map(r=>r.name));
+ let existing=await columns();
+ for(const name of ["lock_owner","lock_until"]){
+  if(existing.has(name))continue;
+  try{
+   const result=await env.DB.prepare("ALTER TABLE ct_gmail_integracao ADD COLUMN "+name+" TEXT").run();
+   if(result.success===false)throw Error("D1_SCHEMA_UPDATE_FAILED");
+  }catch(e){
+   // Outro request pode ter aplicado a mesma migracao simultaneamente.
+   if(!(await columns()).has(name))throw e;
+  }
+  existing=await columns();
+  if(!existing.has(name))throw Error("D1_SCHEMA_UPDATE_FAILED");
+ }
+
 }
 // Classifica somente erros conhecidos, nunca retorna SQL bruto ou valores.
 function d1Code(e){
