@@ -7,6 +7,7 @@ import { paginaContingenciaHtml, scriptContingenciaJs } from "./contingenciaPage
 import { paginaCadastroRapidoHtml, scriptCadastroRapidoJs } from "./cadastroRapidoPage.js";
 import { processarEmailRouting } from "./emailRouting.js";
 import { registrarEventoEmail } from "./emailDiagnostico.js";
+import { gmailContingenciaApi, sincronizarGmailContingencia } from "./gmailBridge.js";
 
 // Piloto isolado. Nunca faz consultas ao Supabase nem recebe eventos de producao.
 const responder = (conteudo, status = 200) => new Response(JSON.stringify(conteudo), {
@@ -21,6 +22,10 @@ const responder = (conteudo, status = 200) => new Response(JSON.stringify(conteu
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    // OAuth Gmail exclusivo de Admin/C&O, separado das APIs operacionais.
+    const respostaGmail = await gmailContingenciaApi(request, env, url);
+    if (respostaGmail) return respostaGmail;
 
     // Contingencia independente. Sem acesso ao Supabase, Render ou dados de homologacao.
     const respostaContingencia = await contingenciaApi(request, env, url);
@@ -208,6 +213,12 @@ export default {
     }
 
     return responder({ erro: "Rota nao encontrada." }, 404);
+  },
+  async scheduled(event, env, ctx) {
+    // Cron Cloudflare: uma consulta a cada 5 minutos, sem Apps Script.
+    const tarefa=sincronizarGmailContingencia(env);
+    if (ctx?.waitUntil) ctx.waitUntil(tarefa);
+    else await tarefa;
   },
   async email(message, env) {
     // Contadores por categoria sem assunto, remetente, CPF, placa ou valores.
