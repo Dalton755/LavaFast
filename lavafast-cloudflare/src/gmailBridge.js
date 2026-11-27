@@ -58,7 +58,11 @@ const getErrorStatus=n=>n===429?"GMAIL_LIMITE":n===403?"GMAIL_ACESSO_NEGADO":
 async function googleToken(env,fields){
  const body=new URLSearchParams({...fields,client_id:env.CT_GMAIL_CLIENT_ID,client_secret:env.CT_GMAIL_CLIENT_SECRET});
  const res=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body});
- if(!res.ok)throw Error(res.status===400?"GOOGLE_AUTORIZACAO_INVALIDA":getErrorStatus(res.status));
+ if(!res.ok){
+  const err=await res.json().catch(()=>({}));
+  const known={invalid_client:"GOOGLE_CLIENTE_INVALIDO",invalid_grant:"GOOGLE_AUTORIZACAO_INVALIDA",unauthorized_client:"GOOGLE_CLIENTE_NAO_AUTORIZADO",invalid_scope:"ESCOPO_INSUFICIENTE",access_denied:"GOOGLE_ACESSO_NEGADO"};
+  throw Error(Object.hasOwn(known,err.error)?known[err.error]:(res.status===400?"GOOGLE_AUTORIZACAO_INVALIDA":getErrorStatus(res.status)));
+ }
  const b=await res.json();
  if(typeof b.access_token!=="string")throw Error("GOOGLE_SEM_TOKEN");
  return b;
@@ -66,7 +70,13 @@ async function googleToken(env,fields){
 async function gmailRequest(path,accessToken){
  const res=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/"+path,{
   headers:{"authorization":"Bearer "+accessToken,"accept":"application/json"}});
- if(!res.ok)throw Error(getErrorStatus(res.status));
+ if(!res.ok){
+  const err=await res.json().catch(()=>({}));
+  const reasons=[...(err.error?.errors||[]).map(x=>x.reason),...(err.error?.details||[]).map(x=>x.reason)];
+  if(reasons.some(x=>["accessNotConfigured","SERVICE_DISABLED","API_DISABLED"].includes(x)))throw Error("GMAIL_API_DESATIVADA");
+  if(reasons.some(x=>["insufficientPermissions","ACCESS_TOKEN_SCOPE_INSUFFICIENT"].includes(x)))throw Error("ESCOPO_INSUFICIENTE");
+  throw Error(getErrorStatus(res.status));
+ }
  return res.json();
 }
 function extractHeaders(m){
@@ -122,7 +132,10 @@ async function oauthStart(env,u){
 async function oauthCallback(url,env){
  if(!configured(env))return redirect("configuracao");
  const state=url.searchParams.get("state")||"",code=url.searchParams.get("code")||"";
+ const googleError=url.searchParams.get("error");
+ if(googleError)return redirect(googleError==="access_denied"?"GOOGLE_ACESSO_NEGADO":"GOOGLE_RETORNO_INVALIDO");
  if(!/^[A-Za-z0-9_-]{30,150}$/.test(state)||!code||code.length>4096)return redirect("invalido");
+ let etapa="OAUTH_ESTADO";
  try{
   await ensureState(env);
   const stateHash=urlSafe(await digest(state)),n=new Date().toISOString();
@@ -130,25 +143,34 @@ async function oauthCallback(url,env){
   if(!saved)return redirect("expirado");
   const removed=await env.DB.prepare("DELETE FROM ct_gmail_oauth_states WHERE state_hash=? AND expira_em>?").bind(stateHash,n).run();
   if(removed.meta?.changes!==1)return redirect("expirado");
+  etapa="OAUTH_GESTOR";
   const gestor=await env.DB.prepare("SELECT cargo,ativo,trocar_senha FROM ct_funcionarios WHERE id=?").bind(saved.gestor_id).first();
   if(!gestor||gestor.ativo!==1||gestor.trocar_senha===1||
     !["C&O","ADMIN","ADMINISTRADOR"].includes(String(gestor.cargo||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase()))
     return redirect("gestor_inativo");
+  etapa="OAUTH_CHAVE";
   const verifier=await unseal(saved.verifier_encrypted,env);
+  etapa="OAUTH_TOKEN";
   const b=await googleToken(env,{grant_type:"authorization_code",code,redirect_uri:REDIRECT,code_verifier:verifier});
   if(!b.refresh_token)throw Error("GOOGLE_SEM_REFRESH_TOKEN");
   if(typeof b.scope==="string"&&!b.scope.split(" ").includes(SCOPE))throw Error("ESCOPO_INSUFICIENTE");
+  etapa="OAUTH_PERFIL";
   const profile=await gmailRequest("profile",b.access_token);
   const mail=norm(profile.emailAddress);
   if(mail!==norm(env.CT_GMAIL_ALLOWED_EMAIL))throw Error("CONTA_NAO_PERMITIDA");
+  etapa="OAUTH_CRIPTOGRAFIA";
   const encrypted=await seal(b.refresh_token,env),now=new Date().toISOString();
+  etapa="OAUTH_D1";
   await ensureConn(env);
   await env.DB.prepare("INSERT INTO ct_gmail_integracao(id,gmail,refresh_token_encrypted,conectada_em,atualizado_em) VALUES('localiza',?,?,?,?) ON CONFLICT(id) DO UPDATE SET gmail=excluded.gmail,refresh_token_encrypted=excluded.refresh_token_encrypted,conectada_em=excluded.conectada_em,ultima_consulta=NULL,ultimo_sucesso=NULL,ultimo_erro_codigo=NULL,lock_owner=NULL,lock_until=NULL,mensagens_analisadas=0,cards_criados=0,atualizado_em=excluded.atualizado_em")
    .bind(mail,encrypted,now,now).run();
   return redirect("conectado");
- }catch{
-  // Nenhum segredo ou mensagem do Google e exposto por erro no callback.
-  return redirect("erro");
+ }catch(e){
+  // Somente codigos fixos, nunca mensagens brutas, tokens ou dados pessoais.
+  const allowed=new Set(["GOOGLE_CLIENTE_INVALIDO","GOOGLE_AUTORIZACAO_INVALIDA","GOOGLE_CLIENTE_NAO_AUTORIZADO","GOOGLE_ACESSO_NEGADO","GOOGLE_SEM_TOKEN","GOOGLE_SEM_REFRESH_TOKEN","ESCOPO_INSUFICIENTE","CONTA_NAO_PERMITIDA","GMAIL_API_DESATIVADA","GMAIL_ACESSO_NEGADO","GMAIL_LIMITE","GMAIL_TEMPORARIO","TOKEN_INVALIDO"]);
+  const codigo=allowed.has(e?.message)?e.message:etapa;
+  console.warn("Gmail OAuth:",codigo);
+  return redirect(codigo);
  }
 }
 export async function sincronizarGmailContingencia(env){
@@ -196,7 +218,7 @@ export async function sincronizarGmailContingencia(env){
      const loja=agencia==="ACSMC"?"MOOCA":agencia==="ACUCP"?"CENTRAL_PLAZA":null;
      if(!loja)throw Error("AGENCIA_DESCONHECIDA");
      const saved=await receberEmailDoCloudflare({
-      remetente:from,assunto,message_id:messageId,
+      remetente:from,assunto:subject,message_id:messageId,
       texto,loja_codigo:loja,recebido_em:received
      },env);
      if(!saved.sucesso)throw Error("IMPORTACAO_NEGADA");
