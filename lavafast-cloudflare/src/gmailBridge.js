@@ -130,6 +130,10 @@ async function oauthCallback(url,env){
   if(!saved)return redirect("expirado");
   const removed=await env.DB.prepare("DELETE FROM ct_gmail_oauth_states WHERE state_hash=? AND expira_em>?").bind(stateHash,n).run();
   if(removed.meta?.changes!==1)return redirect("expirado");
+  const gestor=await env.DB.prepare("SELECT cargo,ativo,trocar_senha FROM ct_funcionarios WHERE id=?").bind(saved.gestor_id).first();
+  if(!gestor||gestor.ativo!==1||gestor.trocar_senha===1||
+    !["C&O","ADMIN","ADMINISTRADOR"].includes(String(gestor.cargo||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase()))
+    return redirect("gestor_inativo");
   const verifier=await unseal(saved.verifier_encrypted,env);
   const b=await googleToken(env,{grant_type:"authorization_code",code,redirect_uri:REDIRECT,code_verifier:verifier});
   if(!b.refresh_token)throw Error("GOOGLE_SEM_REFRESH_TOKEN");
@@ -159,9 +163,16 @@ export async function sincronizarGmailContingencia(env){
  let analisadas=0,criadas=0,duplicadas=0;
  try{
   const token=await googleToken(env,{grant_type:"refresh_token",refresh_token:await unseal(existing.refresh_token_encrypted,env)});
+  // Primeira consulta traz solicitacoes do DIA OPERACIONAL a partir de 06h
+  // em Sao Paulo. Evita criar como abertas lavagens antigas ja concluidas.
+  const hoje=new Intl.DateTimeFormat("en-US",{
+   timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"
+  }).formatToParts(new Date());
+  const campo=n=>hoje.find(x=>x.type===n)?.value;
+  const inicioTurno=Date.parse(campo("year")+"-"+campo("month")+"-"+campo("day")+"T06:00:00-03:00");
   const start=existing.ultima_consulta?
    Math.max(Date.now()-14*86400000,Date.parse(existing.ultima_consulta)-30*60000):
-   Date.now()-24*3600000;
+   Math.min(inicioTurno,Date.now()-5*60000);
   const query='from:no-reply@localiza.com subject:"Solicitação de Lavagem" after:'+Math.floor(start/1000);
   let page="",pages=0,excedeu=false,erros=0;
   do{
