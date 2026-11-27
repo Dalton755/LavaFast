@@ -70,6 +70,11 @@ function userOut(u){return {id:u.id,nome:u.nome,cargo:u.cargo,perfil:role(u.carg
 async function audit(env,evento,userId=null,cardId=null){
  await env.DB.prepare("INSERT INTO ct_auditoria(id,evento,funcionario_id,solicitacao_id,horario) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(),evento,userId,cardId,now()).run();
 }
+export async function verificarGestorContingencia(r,env){
+ if(!enabled(env))return null;
+ const u=await session(r,env);
+ return u&&u.ativo===1&&u.trocar_senha!==1&&isAdmin(u)?{id:u.id,cargo:u.cargo}:null;
+}
 async function session(r,env){
  const token=(r.headers.get("Cookie")||"").split(";").map(x=>x.trim()).find(x=>x.startsWith(COOKIE+"="))?.slice(COOKIE.length+1);
  if(!token||!/^[a-f0-9]{64}$/.test(token))return null;
