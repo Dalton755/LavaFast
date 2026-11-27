@@ -22,6 +22,22 @@ const configured=env=>env.ENVIRONMENT==="homologacao"&&!!env.DB&&
  typeof env.CT_GMAIL_CLIENT_SECRET==="string"&&env.CT_GMAIL_CLIENT_SECRET.length>=8&&
  typeof env.CT_GMAIL_TOKEN_KEY==="string"&&env.CT_GMAIL_TOKEN_KEY.length>=32&&
  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(norm(env.CT_GMAIL_ALLOWED_EMAIL));
+// Diagnostico exclusivo do gestor: nunca retorna valores das credenciais.
+function configurationIssues(env){
+ const checks=[
+  ["CT_GMAIL_CLIENT_ID",v=>typeof v==="string"&&/\.apps\.googleusercontent\.com$/.test(v)],
+  ["CT_GMAIL_CLIENT_SECRET",v=>typeof v==="string"&&v.length>=8],
+  ["CT_GMAIL_TOKEN_KEY",v=>typeof v==="string"&&v.length>=32],
+  ["CT_GMAIL_ALLOWED_EMAIL",v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(norm(v))]
+ ];
+ const issues=checks.flatMap(([name,valid])=>{
+  const v=env[name];
+  return valid(v)?[]:[{nome:name,status:v==null||v===""?"ausente":"formato_invalido"}];
+ });
+ if(env.ENVIRONMENT!=="homologacao")issues.push({nome:"ENVIRONMENT",status:"formato_invalido"});
+ if(!env.DB)issues.push({nome:"DB",status:"ausente"});
+ return issues;
+}
 const urlSafe=b=>btoa(Array.from(b,x=>String.fromCharCode(x)).join("")).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 const digest=async s=>new Uint8Array(await crypto.subtle.digest("SHA-256",enc.encode(s)));
 const tokenRandom=()=>urlSafe(crypto.getRandomValues(new Uint8Array(32)));
@@ -253,7 +269,7 @@ export async function gmailContingenciaApi(request,env,url){
  if(!u)return json({erro:"Acesso exclusivo de Admin ou C&O autenticado."},403);
  if(url.pathname===PREFIX+"/status"&&request.method==="GET"){
   const r=await row(env);
-  return json({...statusRow(r),configurado:configured(env),conta_permitida:env.CT_GMAIL_ALLOWED_EMAIL||null,
+  return json({...statusRow(r),configurado:configured(env),configuracao_pendencias:configurationIssues(env),conta_permitida:env.CT_GMAIL_ALLOWED_EMAIL||null,
    agendamento:"a cada 5 minutos",redirecionamento_google:REDIRECT});
  }
  if(!["POST"].includes(request.method))return json({erro:"Metodo invalido."},405);
