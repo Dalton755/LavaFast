@@ -58,7 +58,7 @@ function typeInfo(contentType){
  return {type,boundary:(boundary?.[1]||boundary?.[2]||boundary?.[3]||"").trim(),
   charset:(charset?.[1]||charset?.[2]||charset?.[3]||"utf-8").trim()};
 }
-function htmlText(html){
+export function htmlText(html){
  return html.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi,"")
    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,"")
    .replace(/<(?:br|\/tr|\/p|\/div|\/li|\/table)\b[^>]*>/gi,"\n")
