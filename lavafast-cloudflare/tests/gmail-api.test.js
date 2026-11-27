@@ -46,7 +46,7 @@ function fixture(){
 }
 async function call(env,path,method="GET",payload=null,cookie="",headers={}){
  const h={...headers};
- if(method!=="GET"){h.Origin=BASE;h["content-type"]="application/json";}
+ if(method!=="GET"){h.Origin??=BASE;h["content-type"]="application/json";}
  if(cookie)h.cookie=cookie;
  const res=await worker.fetch(new Request(BASE+path,{method,headers:h,
   body:method==="GET"?undefined:JSON.stringify(payload||{})}),env);
