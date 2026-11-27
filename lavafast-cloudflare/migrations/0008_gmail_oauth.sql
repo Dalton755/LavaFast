@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS ct_gmail_integracao (
   ultima_consulta TEXT,
   ultimo_sucesso TEXT,
   ultimo_erro_codigo TEXT,
+  lock_owner TEXT,
+  lock_until TEXT,
   mensagens_analisadas INTEGER NOT NULL DEFAULT 0,
   cards_criados INTEGER NOT NULL DEFAULT 0,
   atualizado_em TEXT NOT NULL
