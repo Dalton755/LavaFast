@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/lavafast-cloudflare-homolog
+      - feature/glowfleet-recuperacao-gmail
     paths:
       - 'lavafast-cloudflare/**'
       - '.github/workflows/lavafast-cloudflare-hml.yml'

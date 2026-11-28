@@ -241,7 +241,7 @@ async function oauthCallback(url,env){
   return redirect(codigo);
  }
 }
-export async function sincronizarGmailContingencia(env){
+export async function sincronizarGmailContingencia(env,retro=null){
  if(!configured(env))return {sucesso:false,erro:"CONFIGURACAO_PENDENTE"};
  const existing=await row(env);
  if(!existing)return {sucesso:false,erro:"GOOGLE_NAO_CONECTADO"};
@@ -250,7 +250,7 @@ export async function sincronizarGmailContingencia(env){
  const acquired=await env.DB.prepare("UPDATE ct_gmail_integracao SET lock_owner=?,lock_until=? WHERE id='localiza' AND (lock_until IS NULL OR lock_until<?)")
   .bind(owner,lease,now).run();
  if(acquired.meta?.changes!==1)return {sucesso:false,erro:"SINCRONIZACAO_EM_ANDAMENTO"};
- let analisadas=0,criadas=0,duplicadas=0;
+ let analisadas=0,criadas=0,duplicadas=0,jaProcessadas=0;
  try{
   const token=await googleToken(env,{grant_type:"refresh_token",refresh_token:await unseal(existing.refresh_token_encrypted,env)});
   // Primeira consulta traz solicitacoes do DIA OPERACIONAL a partir de 06h
@@ -263,24 +263,33 @@ export async function sincronizarGmailContingencia(env){
   const start=existing.ultima_consulta?
    Math.max(Date.now()-14*86400000,Date.parse(existing.ultima_consulta)-30*60000):
    Math.min(inicioTurno,Date.now()-5*60000);
-  const query='from:no-reply@localiza.com subject:"Solicitação de Lavagem" after:'+Math.floor(start/1000);
-  let page="",pages=0,excedeu=false,erros=0;
+  const inicio=retro?retro.fim-retro.dias*86400000:start;
+  const query='from:no-reply@localiza.com subject:"Solicitação de Lavagem" after:'+Math.floor(inicio/1000)+(retro?' before:'+Math.ceil(retro.fim/1000):'');
+  let page=retro?.cursor||"",pages=0,excedeu=false,erros=0;
   do{
-   const path="messages?"+new URLSearchParams({q:query,maxResults:"50",...(page?{pageToken:page}:{})}).toString();
+   const path="messages?"+new URLSearchParams({q:query,maxResults:retro?"5":"50",...(page?{pageToken:page}:{})}).toString();
    const result=await gmailRequest(path,token.access_token);
    const messages=result.messages||[];
    for(const item of messages){
     if(!/^[a-zA-Z0-9_-]{8,150}$/.test(item.id||""))continue;
     const messageId="gapi-"+item.id;
-    const seen=await env.DB.prepare("SELECT 1 FROM ct_email_importacoes WHERE message_id=?").bind(messageId).first();
-    if(seen)continue;
+    const seen=await env.DB.prepare("SELECT identificados FROM ct_email_importacoes WHERE message_id=?").bind(messageId).first();
+    if(seen){
+     if(retro){jaProcessadas++;duplicadas+=Number(seen.identificados||0);}
+     continue;
+    }
     try {
      const m=await gmailRequest("messages/"+encodeURIComponent(item.id)+"?format=full",token.access_token);
      const {from,subject}=extractHeaders(m);
      if(!verificarMensagemLocaliza(from,subject))continue;
      const texto=gmailText(m);
      if(!texto.trim())throw Error("SEM_TEXTO");
-     const time=Number(m.internalDate),received=Number.isFinite(time)&&time>Date.now()-14*86400000&&time<Date.now()+60000?
+     const time=Number(m.internalDate);
+     if(retro){
+      if(!Number.isFinite(time)||time<Date.now()-14*86400000)throw Error("DATA_FORA_DA_JANELA");
+      if(time<inicio||time>retro.fim)continue;
+     }
+     const received=Number.isFinite(time)&&time>Date.now()-14*86400000&&time<Date.now()+60000?
       new Date(time).toISOString():new Date().toISOString();
      const agencia=texto.match(/Ag[eê]ncia da Abertura\s*:\s*([A-Z0-9]+)/i)?.[1]?.toUpperCase();
      const loja=agencia==="ACSMC"?"MOOCA":agencia==="ACUCP"?"CENTRAL_PLAZA":null;
@@ -296,8 +305,16 @@ export async function sincronizarGmailContingencia(env){
     }
    }
    page=result.nextPageToken||"";pages++;
+   if(retro)break; // lote pequeno, mantendo o limite de subrequisicoes
    if(page&&pages>=4){excedeu=true;break;}
   }while(page);
+  if(retro){
+   // A recuperacao historica nunca modifica o checkpoint do cron.
+   const dt=new Date().toISOString();
+   await env.DB.prepare("UPDATE ct_gmail_integracao SET mensagens_analisadas=mensagens_analisadas+?,cards_criados=cards_criados+?,atualizado_em=? WHERE id='localiza' AND lock_owner=?")
+    .bind(analisadas,criadas,dt,owner).run();
+   return {sucesso:true,mensagens_analisadas:analisadas+jaProcessadas,mensagens_ja_processadas:jaProcessadas,cards_criados:criadas,sl_duplicadas:duplicadas,erros,proximo:page||null,fim:retro.fim};
+  }
   if(erros||excedeu)throw Error(excedeu?"LIMITE_PAGINACAO":"MENSAGEM_NAO_PROCESSADA");
   const completed=new Date().toISOString();
   await env.DB.prepare("UPDATE ct_gmail_integracao SET ultima_consulta=?,ultimo_sucesso=?,ultimo_erro_codigo=NULL,mensagens_analisadas=mensagens_analisadas+?,cards_criados=cards_criados+?,atualizado_em=? WHERE id='localiza' AND lock_owner=?")
@@ -306,7 +323,7 @@ export async function sincronizarGmailContingencia(env){
  }catch(e){
   const code=/^(GOOGLE_[A-Z_]+|GMAIL_[A-Z_0-9]+|TOKEN_INVALIDO|LIMITE_PAGINACAO|MENSAGEM_NAO_PROCESSADA)$/.test(e.message)?e.message:"SINCRONIZACAO_FALHOU";
   const dt=new Date().toISOString();
-  await env.DB.prepare("UPDATE ct_gmail_integracao SET ultimo_erro_codigo=?,atualizado_em=? WHERE id='localiza' AND lock_owner=?")
+  if(!retro)await env.DB.prepare("UPDATE ct_gmail_integracao SET ultimo_erro_codigo=?,atualizado_em=? WHERE id='localiza' AND lock_owner=?")
    .bind(code,dt,owner).run();
   return {sucesso:false,erro:code};
  }finally{
@@ -405,6 +422,15 @@ export async function gmailContingenciaApi(request,env,url){
   const cursor=b?.cursor||"";
   if(typeof cursor!=="string"||(cursor&&!/^gapi-[a-zA-Z0-9_-]{8,150}$/.test(cursor)))return json({erro:"Cursor invalido."},400);
   const r=await recuperarTipos(env,cursor);return json(r,r.sucesso?200:503);
+ }
+ if(url.pathname===PREFIX+"/recuperar"){
+  let b;try{b=await request.json();}catch{return json({erro:"Dados invalidos."},400);}
+  const dias=b?.dias,cursor=b?.cursor??"",fim=b?.fim??Date.now();
+  if(![1,3,7,14].includes(dias)||typeof cursor!=="string"||cursor.length>2048||
+   !Number.isSafeInteger(fim)||fim>Date.now()||fim<Date.now()-2*3600000||
+   (cursor&&b?.fim==null))return json({erro:"Periodo ou cursor invalido."},400);
+  const r=await sincronizarGmailContingencia(env,{dias,cursor,fim});
+  return json(r,r.sucesso?200:503);
  }
  if(url.pathname===PREFIX+"/sync"){
   const r=await sincronizarGmailContingencia(env);

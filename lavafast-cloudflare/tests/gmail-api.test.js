@@ -65,7 +65,7 @@ async function admin(env){
 function mockedGoogle(){
  const native=globalThis.fetch;
  const data=Buffer.from(BODY).toString("base64url");
- let hits=0,profile=ALLOWED,scope="https://www.googleapis.com/auth/gmail.readonly";
+ let hits=0,profile=ALLOWED,scope="https://www.googleapis.com/auth/gmail.readonly",historico=false,queries=[];
  globalThis.fetch=async(url,opts)=>{
   const u=String(url);
   if(u==="https://oauth2.googleapis.com/token"){
@@ -81,8 +81,15 @@ function mockedGoogle(){
   assert.equal(opts.headers.authorization,"Bearer fake-test-access-token");
   if(u.endsWith("/profile"))return Response.json({emailAddress:profile});
   if(u.includes("/messages?")){
+   const p=new URL(u).searchParams;queries.push(p.get("q"));
+   if(historico)return Response.json(p.get("pageToken")?{messages:[{id:"aabbccddeeff0033"}]}:{messages:[{id:"aabbccddeeff0011"},{id:"aabbccddeeff0022"}],nextPageToken:"pagina2"});
    return Response.json({messages:[{id:"aabbccddeeff0011",threadId:"ddeeff"}]});
   }
+  if(historico&&/messages\/aabbccddeeff00(?:22|33)\?format=full/.test(u))return Response.json({
+   internalDate:String(Date.now()-48*3600000),
+   payload:{mimeType:"text/plain",body:{data:u.includes("0033")?Buffer.from(BODY.replace("991122334","991122335")).toString("base64url"):data},
+    headers:[{name:"From",value:"<no-reply@localiza.com>"},{name:"Subject",value:"Solicitação de Lavagem"}]}
+  });
   if(u.includes("/messages/aabbccddeeff0011?format=full"))return Response.json({
    id:"aabbccddeeff0011",internalDate:String(Date.now()),
    payload:{mimeType:"text/plain",body:{data},
@@ -93,7 +100,7 @@ function mockedGoogle(){
   });
   throw Error("URL inesperada no mock");
  };
- return {restore(){globalThis.fetch=native},setWrongAccount(){profile="outro@gmail.com"},getHits(){return hits}};
+ return {restore(){globalThis.fetch=native},setWrongAccount(){profile="outro@gmail.com"},getHits(){return hits},setHistory(){historico=true},getQueries(){return queries}};
 }
 test("autorizacao Gmail CPF Admin, PKCE e senha/token nunca em texto no D1",async()=>{
  const {db,env}=fixture();
@@ -159,5 +166,44 @@ test("autorizacao Google recusa conta diferente da permitida",async()=>{
   assert.equal(res.status,303);
   assert.match(res.headers.get("location"),/gmail=erro/);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM ct_gmail_integracao").get().n,0);
+ }finally{mock.restore();db.close();}
+});
+
+test("recuperacao de 3 dias pagina historico, nao duplica SL concluida e preserva checkpoint",async()=>{
+ const {db,env}=fixture(),mock=mockedGoogle();
+ try{
+  const cookie=await admin(env);
+  const auth=await call(env,"/api/contingencia/gmail/authorize","POST",{},cookie);
+  const state=new URL(auth.body.url).searchParams.get("state");
+  await call(env,"/api/contingencia/gmail/callback?state="+state+"&code=autorizado");
+  assert.equal((await call(env,"/api/contingencia/gmail/sync","POST",{},cookie)).body.cards_criados,1);
+  db.prepare("UPDATE ct_solicitacoes SET status='CONCLUIDO' WHERE numero_solicitacao='991122334'").run();
+  const original=db.prepare("SELECT * FROM ct_solicitacoes WHERE numero_solicitacao='991122334'").get();
+  const checkpoint=db.prepare("SELECT ultima_consulta,ultimo_sucesso FROM ct_gmail_integracao").get();
+  mock.setHistory();
+  const path="/api/contingencia/gmail/recuperar";
+  assert.equal((await call(env,path,"POST",{dias:3})).status,403);
+  assert.equal((await call(env,path,"POST",{dias:3},cookie,{Origin:"https://malicioso.invalid"})).status,403);
+  assert.equal((await call(env,path,"POST",{dias:30},cookie)).status,400);
+  const a=await call(env,path,"POST",{dias:3},cookie);
+  assert.equal(a.status,200);
+  assert.equal(a.body.cards_criados,0);
+  assert.equal(a.body.sl_duplicadas,2);
+  assert.equal(a.body.erros,0);
+  assert.equal(a.body.proximo,"pagina2");
+  const b=await call(env,path,"POST",{dias:3,cursor:a.body.proximo,fim:a.body.fim},cookie);
+  assert.equal(b.status,200);
+  assert.equal(b.body.cards_criados,1);
+  assert.equal(b.body.proximo,null);
+  assert.equal(b.body.erros,0);
+  const historico=db.prepare("SELECT * FROM ct_solicitacoes WHERE numero_solicitacao='991122335'").get();
+  assert.equal(historico.status,"SOLICITACAO");
+  assert.ok(Math.abs(Date.parse(historico.recebida_em)-(Date.now()-48*3600000))<60000);
+  assert.deepEqual(db.prepare("SELECT * FROM ct_solicitacoes WHERE numero_solicitacao='991122334'").get(),original);
+  assert.deepEqual(db.prepare("SELECT ultima_consulta,ultimo_sucesso FROM ct_gmail_integracao").get(),checkpoint);
+  assert.equal(mock.getQueries().at(-1),mock.getQueries().at(-2));
+  assert.match(mock.getQueries().at(-1),new RegExp("after:"+Math.floor((a.body.fim-3*86400000)/1000)));
+  assert.equal((await call(env,path,"POST",{dias:3,cursor:a.body.proximo,fim:a.body.fim},cookie)).body.cards_criados,0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM ct_solicitacoes").get().n,2);
  }finally{mock.restore();db.close();}
 });
