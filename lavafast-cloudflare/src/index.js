@@ -23,6 +23,15 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // Entrada principal da operacao aprovada. Mantem URL e cookie do OAuth,
+    // banco D1 e todas as rotas ja utilizados pela equipe.
+    if (url.pathname === "/" && request.method === "GET") {
+      return new Response(null, {
+        status: 302,
+        headers: { "location": "/contingencia", "cache-control": "no-store" }
+      });
+    }
+
     // OAuth Gmail exclusivo de Admin/C&O, separado das APIs operacionais.
     const respostaGmail = await gmailContingenciaApi(request, env, url);
     if (respostaGmail) return respostaGmail;
