@@ -82,7 +82,9 @@ async function session(r,env){
 }
 async function newSession(env,u){
  const token=randomHex(),timestamp=now(),expiry=new Date(Date.now()+EXPIRA*1000).toISOString();
- await env.DB.prepare("INSERT INTO ct_sessoes(token_hash,funcionario_id,expira_em,criada_em) VALUES (?,?,?,?)").bind(await sha(token),u.id,expiry,timestamp).run();
+ // Impede emitir sessao com credencial que acabou de ser redefinida.
+ const inserted=await env.DB.prepare("INSERT INTO ct_sessoes(token_hash,funcionario_id,expira_em,criada_em) SELECT ?,id,?,? FROM ct_funcionarios WHERE id=? AND ativo=1 AND senha_hash=?").bind(await sha(token),expiry,timestamp,u.id,u.senha_hash).run();
+ if(inserted.meta?.changes!==1)return response({erro:"Credenciais alteradas. Entre novamente."},401);
  return response({autenticado:true,usuario:userOut(u)},200,{"set-cookie":cookie(token,EXPIRA)});
 }
 async function bootstrap(r,env){
@@ -101,22 +103,36 @@ async function bootstrap(r,env){
  await audit(env,"BOOTSTRAP",id);
  return response({criado:true,mensagem:"Administrador de contingencia criado. Agora faca login."},201);
 }
-async function failAttempt(env,key){
- const date=new Date(Date.now()+15*60000).toISOString(),ts=now();
- await env.DB.prepare("INSERT INTO ct_tentativas(chave_hmac,falhas,expira_em) VALUES (?,1,?) ON CONFLICT(chave_hmac) DO UPDATE SET falhas=CASE WHEN ct_tentativas.expira_em<=? THEN 1 ELSE ct_tentativas.falhas+1 END,expira_em=CASE WHEN ct_tentativas.expira_em<=? THEN excluded.expira_em ELSE ct_tentativas.expira_em END").bind(key,date,ts,ts).run();
+// Reserva atomica ANTES de verificar senha: pedidos paralelos nao
+// conseguem ultrapassar o limite por conta. Nao grava CPF ou IP em claro.
+async function reserveAttempt(env,key,max){
+ const ts=now(),expires=new Date(Date.now()+15*60000).toISOString();
+ const result=await env.DB.prepare(`INSERT INTO ct_tentativas(chave_hmac,falhas,expira_em) VALUES (?,1,?)
+  ON CONFLICT(chave_hmac) DO UPDATE SET
+   falhas=CASE WHEN ct_tentativas.expira_em<=? THEN 1 ELSE ct_tentativas.falhas+1 END,
+   expira_em=CASE WHEN ct_tentativas.expira_em<=? THEN excluded.expira_em ELSE ct_tentativas.expira_em END
+  WHERE ct_tentativas.expira_em<=? OR ct_tentativas.falhas<?
+  RETURNING falhas`).bind(key,expires,ts,ts,ts,max).first();
+ return !!result;
 }
+async function reserveIp(r,env){
+ // CF-Connecting-IP e definido pelo proxy Cloudflare. Nao confiar em X-Forwarded-For.
+ const ip=r.headers.get("CF-Connecting-IP");
+ if(!ip||ip.length>64)return true;
+ const key=await hmac(env.CT_AUTH_PEPPER,"tentativas-ip:"+ip);
+ return reserveAttempt(env,key,60);
+}
+const tooMany=()=>response({erro:"Muitas tentativas. Aguarde 15 minutos."},429,{"retry-after":"900"});
 async function login(r,env){
  if(!sameOrigin(r))return response({erro:"Origem nao autorizada."},403);
+ if(!await reserveIp(r,env))return tooMany();
  let b;try{b=await body(r,1200);}catch{return response({erro:"CPF ou senha incorretos."},401);}
  const cpf=cpfLimpo(b.cpf);
  if(!cpf||typeof b.senha!=="string"||b.senha.length<1||b.senha.length>128)return response({erro:"CPF ou senha incorretos."},401);
  const key=await hmac(env.CT_AUTH_PEPPER,"tentativas:"+cpf);
- const rate=await env.DB.prepare("SELECT falhas,expira_em FROM ct_tentativas WHERE chave_hmac=?").bind(key).first();
- if(rate&&rate.expira_em>now()&&rate.falhas>=5)return response({erro:"Muitas tentativas. Aguarde 15 minutos."},429);
+ if(!await reserveAttempt(env,key,5))return tooMany();
  const u=await env.DB.prepare("SELECT * FROM ct_funcionarios WHERE cpf_hmac=? AND ativo=1").bind(await hmac(env.CT_AUTH_PEPPER,cpf)).first();
- if(!u||!await passEq(u.senha_salt,b.senha,u.senha_hash,env.CT_AUTH_PEPPER)){
-   await failAttempt(env,key);return response({erro:"CPF ou senha incorretos."},401);
- }
+ if(!u||!await passEq(u.senha_salt,b.senha,u.senha_hash,env.CT_AUTH_PEPPER))return response({erro:"CPF ou senha incorretos."},401);
  await env.DB.prepare("DELETE FROM ct_tentativas WHERE chave_hmac=?").bind(key).run();
  return newSession(env,u);
 }
@@ -129,12 +145,16 @@ async function logout(r,env){
 async function passwordChange(r,env,u){
  if(!sameOrigin(r))return response({erro:"Origem nao autorizada."},403);
  let b;try{b=await body(r,1200);}catch{return response({erro:"Dados invalidos."},400);}
- if(typeof b.senha_atual!=="string"||!validPassword(b.nova_senha))return response({erro:"Informe senha atual e nova senha de 12+ caracteres."},400);
+ if(typeof b.senha_atual!=="string"||b.senha_atual.length>128||!validPassword(b.nova_senha))return response({erro:"Informe senha atual e nova senha de 12+ caracteres."},400);
+ const changeKey=await hmac(env.CT_AUTH_PEPPER,"tentativas-alteracao:"+u.id);
+ if(!await reserveAttempt(env,changeKey,5))return tooMany();
  if(!await passEq(u.senha_salt,b.senha_atual,u.senha_hash,env.CT_AUTH_PEPPER))return response({erro:"Senha atual incorreta."},403);
  if(b.senha_atual===b.nova_senha)return response({erro:"Escolha uma senha diferente."},400);
  const salt=randomHex(),hash=await passHash(salt,b.nova_senha,env.CT_AUTH_PEPPER);
- await env.DB.prepare("UPDATE ct_funcionarios SET senha_salt=?,senha_hash=?,trocar_senha=0,atualizado_em=? WHERE id=?").bind(salt,hash,now(),u.id).run();
+ const changed=await env.DB.prepare("UPDATE ct_funcionarios SET senha_salt=?,senha_hash=?,trocar_senha=0,atualizado_em=? WHERE id=? AND ativo=1 AND senha_hash=?").bind(salt,hash,now(),u.id,u.senha_hash).run();
+ if(changed.meta?.changes!==1)return response({erro:"Credenciais alteradas. Entre novamente."},409);
  await env.DB.prepare("DELETE FROM ct_sessoes WHERE funcionario_id=?").bind(u.id).run();
+ await env.DB.prepare("DELETE FROM ct_tentativas WHERE chave_hmac=?").bind(changeKey).run();
  await audit(env,"ALTERAR_SENHA",u.id);
  return response({sucesso:true,requer_novo_login:true},200,{"set-cookie":cookie("",0)});
 }
