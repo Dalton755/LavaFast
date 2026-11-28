@@ -8,6 +8,7 @@ import { paginaCadastroRapidoHtml, scriptCadastroRapidoJs } from "./cadastroRapi
 import { processarEmailRouting } from "./emailRouting.js";
 import { registrarEventoEmail } from "./emailDiagnostico.js";
 import { gmailContingenciaApi, sincronizarGmailContingencia } from "./gmailBridge.js";
+import { backupApi, backupDiario } from "./backup.js";
 
 // Piloto isolado. Nunca faz consultas ao Supabase nem recebe eventos de producao.
 const responder = (conteudo, status = 200) => new Response(JSON.stringify(conteudo), {
@@ -37,6 +38,8 @@ export default {
     if (respostaGmail) return respostaGmail;
 
     // Contingencia independente. Sem acesso ao Supabase, Render ou dados de homologacao.
+    const respostaBackup = await backupApi(request, env, url);
+    if (respostaBackup) return respostaBackup;
     const respostaContingencia = await contingenciaApi(request, env, url);
     if (respostaContingencia) return respostaContingencia;
 
@@ -225,7 +228,7 @@ export default {
   },
   async scheduled(event, env, ctx) {
     // Cron Cloudflare: uma consulta a cada 5 minutos, sem Apps Script.
-    const tarefa=sincronizarGmailContingencia(env);
+    const tarefa=event.cron==="0 6 * * *"?backupDiario(env):sincronizarGmailContingencia(env);
     if (ctx?.waitUntil) ctx.waitUntil(tarefa);
     else await tarefa;
   },
