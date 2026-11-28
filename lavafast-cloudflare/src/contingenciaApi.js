@@ -395,8 +395,17 @@ export async function contingenciaApi(r,env,url){
  if(path===PREFIX+"/config"&&r.method==="GET"){
   const pronto=enabled(env);
   const estrutura_pronta=pronto?await verificarEstruturaContingencia(env):false;
+  // A ativacao inicial nao e parte do login dos funcionarios.
+  // Em caso de erro no banco, nao oferecer cadastro de administrador.
+  let primeiro_acesso_admin=false;
+  if(estrutura_pronta){
+   try{
+    const total=await env.DB.prepare("SELECT COUNT(*) AS n FROM ct_funcionarios").first();
+    primeiro_acesso_admin=total?.n===0;
+   }catch{}
+  }
   return response({ambiente:"homologacao",independente_supabase:true,pronto,
-    estrutura_pronta,instalacao_automatica_com_chave:true,
+    estrutura_pronta,primeiro_acesso_admin,instalacao_automatica_com_chave:primeiro_acesso_admin,
     email_relay_habilitado:pronto&&typeof env.CT_EMAIL_RELAY_SECRET==="string"&&env.CT_EMAIL_RELAY_SECRET.length>=32,
     email_routing_configurado:pronto&&isEmailConfigured(env)});
  }
