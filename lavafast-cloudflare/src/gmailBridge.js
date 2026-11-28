@@ -327,7 +327,7 @@ async function recuperarTipos(env,cursor){
  try{
   const pending=await env.DB.prepare("SELECT DISTINCT mensagem_id FROM ct_solicitacoes WHERE origem='IMPORTACAO_EMAIL' AND tipo_lavagem IN ('Nao informado','Não informado','') AND mensagem_id LIKE 'gapi-%' AND mensagem_id>? ORDER BY mensagem_id LIMIT 9").bind(cursor).all();
   const ids=pending.results.map(r=>r.mensagem_id), batch=ids.slice(0,8);
-  if(!batch.length)return {sucesso:true,atualizados:0,sem_tipo:0,erros:0,proximo:null};
+
   const token=await googleToken(env,{grant_type:"refresh_token",refresh_token:await unseal(existing.refresh_token_encrypted,env)});
   let atualizados=0,sem_tipo=0,erros=0;
   for(const id of batch){
@@ -351,7 +351,37 @@ async function recuperarTipos(env,cursor){
     erros++;
    }
   }
-  return {sucesso:true,atualizados,sem_tipo,erros,proximo:ids.length>8?batch.at(-1):null};
+  // Cards importados por relay/encaminhamento podem ter outro ID ou nenhum ID.
+  // No ultimo lote, localiza pelo numero de SL e valida placa, loja e remetente.
+  if(ids.length<=8){
+   const missing=await env.DB.prepare("SELECT id,numero_solicitacao,placa,loja_codigo FROM ct_solicitacoes WHERE origem IN ('IMPORTACAO_EMAIL','EMAIL') AND tipo_lavagem IN ('Nao informado','Não informado','') ORDER BY recebida_em DESC LIMIT 4").all();
+   for(const c of missing.results){
+    if(!/^\d{7,12}$/.test(c.numero_solicitacao)){continue;}
+    try{
+     const q='from:no-reply@localiza.com subject:"Solicitação de Lavagem" "'+c.numero_solicitacao+'" newer_than:14d';
+     const found=await gmailRequest("messages?"+new URLSearchParams({q,maxResults:"5"}),token.access_token);
+     if(found.nextPageToken)continue; // nao classifica com busca incompleta
+     const types=new Set();
+     for(const item of found.messages||[]){
+      if(!/^[a-zA-Z0-9_-]{8,150}$/.test(item.id||""))continue;
+      const msg=await gmailRequest("messages/"+encodeURIComponent(item.id)+"?format=full",token.access_token);
+      const {from,subject}=extractHeaders(msg);
+      if(!verificarMensagemLocaliza(from,subject))continue;
+      const parsed=extrairSolicitacoesLocaliza(gmailText(msg),regras);
+      const v=parsed.veiculos.find(v=>v.numero===c.numero_solicitacao&&v.placa===c.placa&&parsed.loja_codigo===c.loja_codigo);
+      if(v)types.add(v.tipo||"");
+     }
+     if(types.size!==1||types.has(""))continue;
+     const result=await env.DB.prepare("UPDATE ct_solicitacoes SET tipo_lavagem=?,atualizado_em=? WHERE id=? AND numero_solicitacao=? AND placa=? AND loja_codigo=? AND origem IN ('IMPORTACAO_EMAIL','EMAIL') AND tipo_lavagem IN ('Nao informado','Não informado','')").bind([...types][0],new Date().toISOString(),c.id,c.numero_solicitacao,c.placa,c.loja_codigo).run();
+     atualizados+=Number(result.meta?.changes||0);
+    }catch(e){
+     if(["GMAIL_LIMITE","TOKEN_INVALIDO","GMAIL_ACESSO_NEGADO","GMAIL_API_DESATIVADA"].includes(e?.message))throw e;
+     erros++;
+    }
+   }
+  }
+  const remaining=await env.DB.prepare("SELECT COUNT(*) AS n FROM ct_solicitacoes WHERE origem IN ('IMPORTACAO_EMAIL','EMAIL') AND tipo_lavagem IN ('Nao informado','Não informado','')").first();
+  return {sucesso:true,atualizados,sem_tipo:Number(remaining?.n||0),erros,proximo:ids.length>8?batch.at(-1):null};
  }catch(e){return {sucesso:false,erro:["GMAIL_LIMITE","TOKEN_INVALIDO","GMAIL_ACESSO_NEGADO","GMAIL_API_DESATIVADA"].includes(e?.message)?e.message:"RECUPERACAO_TIPOS_FALHOU"};}
  finally{await env.DB.prepare("UPDATE ct_gmail_integracao SET lock_owner=NULL,lock_until=NULL WHERE id='localiza' AND lock_owner=?").bind(owner).run();}
 }
