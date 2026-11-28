@@ -6,7 +6,8 @@
   "workers_dev": true,
   // Preserva variaveis configuradas pelo painel em novos deploys.
   "keep_vars": true,
-  "triggers": { "crons": ["*/5 * * * *"] },
+  "triggers": { "crons": ["*/5 * * * *", "0 6 * * *"] },
+  "r2_buckets": [{ "binding": "BACKUPS", "bucket_name": "glowfleet-backups" }],
   "vars": {
     "ENVIRONMENT": "homologacao"
   },
